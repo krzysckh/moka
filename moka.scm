@@ -249,7 +249,7 @@
           (i "upload")
           ((input (name . ,id)
                   (type . "file")
-                  (accept . "image/png image/jpg image/gif image/heic image/heic-sequence")
+                  ; (accept . "image/png image/jpg image/gif image/heic image/heic-sequence")
                   ,@(if (not (null? required?)) '((required . "true")) '()))))))
       ((image)
        `((div (class . "row"))
