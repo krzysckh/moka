@@ -19,6 +19,8 @@
 (import
  (prefix (ext sqlite io) s3/))
 
+,load "moka-config.scm"
+
 (define (execute* ptr s arg)
   (map
    (λ (l)
@@ -29,9 +31,6 @@
             v))
       l))
    (s3/execute ptr s arg)))
-
-(define *db-file* "moka.db")
-(define *uploads-dir* "static/uploads")
 
 (when (not (sys/directory? *uploads-dir*))
   (sys/mkdir *uploads-dir*))
@@ -419,9 +418,11 @@
                (p (if (= 0 (string-length (get p 'timestamp "")))
                       (put p 'timestamp (str (time))) ; lol
                       p)))
-          (print (ff->list p))
           ((constructor p) (db))
           (r/redirect redir)))))
+
+(define (compress-image filename-from filename-to)
+  (system `("convert" ,filename-from "-resize" "640" "-quality" "90" ,filename-to)))
 
 (define app
   (r/make-dispatcher
@@ -478,7 +479,7 @@
 
 (λ (_)
   (db-refresher)
-  (r/fastcgi-bind 8081 app (r/make-stdout-logger)))
+  (r/fastcgi-bind *port* app (r/make-stdout-logger)))
 
 ;; Local Variables:
 ;; compile-command: "make run"

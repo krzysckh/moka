@@ -1,3 +1,5 @@
 *.~undo-tree~
 static/uploads/*
 *.db
+moka
+*.c
