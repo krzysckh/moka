@@ -1,0 +1,21 @@
+#!/bin/ksh
+
+daemon_user=_moka
+daemon_execdir=/var/moka
+daemon=/var/moka/moka
+# daemon_logger="daemon.info"
+
+. /etc/rc.d/rc.subr
+
+rc_bg=YES
+rc_reload=NO
+
+rc_stop() {
+  ps auxw | awk '$1 == "_moka" { print $2 }' | xargs kill -9
+}
+
+rc_pre() {
+  rc_stop || true
+}
+
+rc_cmd $1

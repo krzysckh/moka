@@ -69,13 +69,15 @@ function load_relation(id, table) {
     const dlg = make_dialog(`wybierz ${table}`, body => {
       fetch(`/api/${table}`).then(r => r.json()).then(its => {
         for (let it of its.reverse()) {
+          const click = () => {
+            target.value = it['id'];
+            dlg.close();
+          };
           const el = make_img(i => {
             i.src = `/uploads/${it['image']}`;
+            i.addEventListener('click', click);
           }, b => {
-            b.addEventListener('click', () => {
-              target.value = it['id'];
-              dlg.close();
-            });
+            b.addEventListener('click', click);
           }, it['name']);
           body.appendChild(el);
         }

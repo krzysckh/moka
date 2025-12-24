@@ -32,8 +32,8 @@
       l))
    (s3/execute ptr s arg)))
 
-(when (not (sys/directory? *uploads-dir*))
-  (sys/mkdir *uploads-dir*))
+;; (when (not (sys/directory? *uploads-dir*))
+;;   (sys/mkdir *uploads-dir*))
 
 (define (start-migrate-thread)
   (thread
@@ -42,10 +42,11 @@
      (lets ((who v (next-mail)))
        (tuple-case v
          ((add f) (loop (cons f fs)))
-         ((migrate ptr)
-          (for-each (λ (tbl) (tbl ptr)) fs)
-          (mail who 'ok)
-          (loop #n))
+         ((dump) (mail who fs))
+         ;; ((migrate ptr)
+         ;;  (for-each (λ (tbl) (tbl ptr)) fs)
+         ;;  (mail who 'ok)
+         ;;  (loop #n))
          (else
           (loop fs)))))))
 
@@ -186,10 +187,6 @@
   yield        => int  ; coffee yield (grams)
   notes        => text
   )
-
-(let ((ptr (s3/open *db-file*)))
-  (interact 'migrate (tuple 'migrate ptr))
-  (s3/close ptr))
 
 (define (db-get table items)
   (lets ((p (db)))
@@ -477,7 +474,16 @@
    "m/^\\/static/"   => (λ (r) (r/static-dispatcher "static" "/static" r))
    ))
 
+(define migrate!
+  (let ((fs (interact 'migrate (tuple 'dump))))
+    (λ (p)
+      (for-each (λ (f) (f p)) fs))))
+
 (λ (_)
+  (let ((ptr (s3/open *db-file*)))
+    (migrate! ptr)
+    (s3/close ptr))
+
   (db-refresher)
   (r/fastcgi-bind *port* app (r/make-stdout-logger)))
 
