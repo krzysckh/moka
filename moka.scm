@@ -447,10 +447,10 @@
                             (lets ((p (get req 'post-data #n))
                                    (filename (str *uploads-dir* "/" (time-ns) ".jpg"))
                                    (filename* (str filename "_orig")))
-                              (thread
+                              (thread   ; TODO: maybe don't run this in a thread, but keep user waiting for the upload & conversion to finish
                                (begin
                                  (r/chunked-post-data->file p filename*)
-                                 (system `("convert" ,filename* "-quality" "80" ,filename))
+                                 (compress-image filename* filename)
                                  (s3/execute (db) "INSERT INTO uploads (location, timestamp) VALUES (?, current_timestamp)" (list filename))))
                               (r/response code => 200))))
 
