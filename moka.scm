@@ -257,11 +257,10 @@
      (head
       ((meta (name . "viewport") (content . "width=device-width, initial-scale=1")))
       ((meta (charset . "utf-8")))
-      ;; TODO: move all of these jsdelivr deps to static/ at compile time
-      ((link (href . "https://cdn.jsdelivr.net/npm/beercss@3.13.1/dist/cdn/beer.min.css") (rel . "stylesheet")))
+      ((link (href . "https://pub.krzysckh.org/beercss@3.13.1/beer.min.css") (rel . "stylesheet")))
       ((script (src . "/static/app.js")))
-      ((script (type . "module") (src . "https://cdn.jsdelivr.net/npm/beercss@3.13.1/dist/cdn/beer.min.js")))
-      ((script (type . "module") (src . "https://cdn.jsdelivr.net/npm/material-dynamic-colors@1.1.2/dist/cdn/material-dynamic-colors.min.js"))))
+      ((script (type . "module") (src . "https://pub.krzysckh.org/beercss@3.13.1/beer.min.js")))
+      ((script (type . "module") (src . "https://pub.krzysckh.org/beercss@3.13.1/material-dynamic-colors.min.js"))))
      ((body (class . "dark"))
       ((nav (class . "m l left max"))
        (header
