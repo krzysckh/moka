@@ -464,6 +464,10 @@ ORDER BY cast(timestamp as int) desc"
                    headers => '((Content-type . "text/html"))
                    content => (make-page
                                `((p "pozdro")
+                                 ((article (class . "border"))
+                                  (h3 "kawka wypita (ziarna)")
+                                  (h6 ,(str (car* (car* (s3/execute (db) "SELECT CAST(SUM(dose) AS integer) FROM brews" #n))) "g"))
+                                  (p "no, gratulacje. oby tak dalej. lecz sie."))
                                  ((nav (class . "row scroll"))
                                   ,@(map render-coffee (db-get-latest-brews)))
                                  )))))
