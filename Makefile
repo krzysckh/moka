@@ -23,6 +23,7 @@ auto-install: all
 	cp -v moka /var/moka/moka
 	mkdir -p /var/moka/static/uploads
 	cp -v static/app.js /var/moka/static/app.js
+	[ -d /var/moka/static/beercss ] || cp -vr static/beercss /var/moka/static/beercss
 	chown -R _moka:_moka /var/moka/
 	cp -v moka.rc /etc/rc.d/moka
 	chmod +x /etc/rc.d/moka
