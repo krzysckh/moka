@@ -55,6 +55,28 @@
 
 (start-migrate-thread)
 
+(define (start-schema-thread schema)
+  (thread
+   'schema
+   (let loop ((schema schema)) ; ff of table -> k -> v
+     (lets ((who v (next-mail)))
+       (tuple-case v
+         ((add-column table column t)
+          (loop (put schema table (put (get schema table) column t))))
+         ((get-schema table)
+          (mail who (get schema table))
+          (loop schema))
+         ((dump)
+          (mail who schema))))))) ; die
+
+(define (add-column table column t)
+  (mail 'schema (tuple 'add-column table column t)))
+
+(define (get-schema table)
+  (interact 'schema (tuple 'get-schema table)))
+
+(start-schema-thread empty)
+
 ;; unsafe
 (define (table-has-column? ptr name col)
   (let ((v (execute* ptr (str "SELECT * FROM pragma_table_info('" name "') WHERE name = ?") (list (str col)))))
@@ -70,14 +92,20 @@
 
 ;; unsafe
 (define-syntax define-table
-  (syntax-rules (42 => _getk keys migrate id)
+  (syntax-rules (42 => relation _getk _gets keys migrate id int)
     ((_ 42 name)
      (λ _ (print (str "[define-table] ok: " 'name))))
-    ((_ 42 name k => (v ...) . rest)
+    ;; ((_ 42 name k => (v ...) . rest)
+    ;;  (λ (ptr)
+    ;;    (when (not (table-has-column? ptr 'name 'k))
+    ;;      (print "[define-table] new column for migration: " 'k)
+    ;;      (s3/execute ptr (str "ALTER TABLE " 'name " ADD COLUMN " 'k " " (fold (λ (a b) (str a " " b)) "" '(v ...)) ";")))
+    ;;    ((_ 42 name . rest) ptr)))
+    ((_ 42 name k => (relation v) . rest)
      (λ (ptr)
        (when (not (table-has-column? ptr 'name 'k))
          (print "[define-table] new column for migration: " 'k)
-         (s3/execute ptr (str "ALTER TABLE " 'name " ADD COLUMN " 'k " " (fold (λ (a b) (str a " " b)) "" '(v ...)) ";")))
+         (s3/execute ptr (str "ALTER TABLE " 'name " ADD COLUMN " 'k " int;")))
        ((_ 42 name . rest) ptr)))
     ((_ 42 name k => v . rest)
      (λ (ptr)
@@ -88,10 +116,16 @@
     ((_ _getk k => v . rest)
      (cons 'k (_ _getk . rest)))
     ((_ _getk) #n)
+    ((_ _gets name k => v . rest)
+     (begin
+       (add-column 'name 'k 'v)
+       (_ _gets name . rest)))
+    ((_ _gets name) (add-column 'name 'id 'int))
     ((_ (name constructor updater) . rest)
      (define-values (delivered constructor updater)
        (values
         (begin
+          (_ _gets name . rest)
           (add-migration
            (λ (ptr)
              (s3/execute ptr (str "CREATE TABLE IF NOT EXISTS " 'name " (id integer not null primary key)"))
@@ -148,29 +182,29 @@
 
 (define-table (roasteries make-roastery update-roastery)
   name   => text
-  image  => int
+  image  => (relation uploads)
   url    => text
   notes  => text
   )
 
 (define-table (methods make-method update-method)
   name  => text
-  image => int                    ; -> uploads
+  image => (relation uploads)
   notes => text
   )
 
 (define-table (coffees make-coffee update-coffee)
   name        => text
-  roastery    => int                    ; -> roasteries
+  roastery    => (relation roasteries)
   roast_level => int
-  image       => int                    ; -> uploads
+  image       => (relation uploads)
   url         => text
   notes       => text
   )
 
 (define-table (grinders make-grinder update-grinder)
   name  => text
-  image => int                    ; -> uploads
+  image => (relation uploads)
   url   => text
   notes => text
   )
@@ -178,20 +212,20 @@
 (define-table (gear make-gear update-gear)          ; espresso machines, moka pots et al
   name  => text
   url   => text
-  image => int  ; -> uploads
+  image => (relation uploads)
   notes => text
   )
 
 (define-table (brews make-brew update-brew)
   timestamp    => datetime
-  coffee       => int  ; -> coffees
-  grinder      => int  ; -> grinders
-  method       => int  ; -> methods
-  gear         => int  ; -> gear
+  coffee       => (relation coffees)
+  grinder      => (relation grinders)
+  method       => (relation methods)
+  gear         => (relation gear)
+  image        => (relation uploads)
   local_p      => bool ; made at home?
   grind_level  => int
   rating       => int
-  image        => int  ; -> uploads
   dose         => int  ; coffee dose (grams)
   yield        => int  ; coffee yield (grams)
   notes        => text
@@ -223,6 +257,7 @@
      (head
       ((meta (name . "viewport") (content . "width=device-width, initial-scale=1")))
       ((meta (charset . "utf-8")))
+      ;; TODO: move all of these jsdelivr deps to static/ at compile time
       ((link (href . "https://cdn.jsdelivr.net/npm/beercss@3.13.1/dist/cdn/beer.min.css") (rel . "stylesheet")))
       ((script (src . "/static/app.js")))
       ((script (type . "module") (src . "https://cdn.jsdelivr.net/npm/beercss@3.13.1/dist/cdn/beer.min.js")))
@@ -328,7 +363,7 @@
             (if (and defaults (not (null? (cdr* defaults)))) (cdr* defaults) (make-list (len lst) #f)))
      ((label (class . "field"))
       ((button (class . "circle extra"))
-       (i "add"))))))                   ;
+       (i "add"))))))
 
 (define (make-list-of table items)
   (let ((its (db-get table (cons 'id items))))
@@ -524,13 +559,14 @@ ORDER BY cast(timestamp as int) desc"
                     'brews
                     '(timestamp coffee grinder method gear local_p grind_level rating image dose yield notes)))
 
-(define (make-api-responder table . items)
-  (λ (req)
-    (r/response
-     code    => 200
-     headers => '((Content-type . "application/json"))
-     content => (json/encode (list->vector (map (λ (l) (zip cons items l))
-                                                (db-get table items)))))))
+(define (make-api-responder table)
+  (let ((items (keys (get-schema table))))
+    (λ (req)
+      (r/response
+       code    => 200
+       headers => '((Content-type . "application/json"))
+       content => (json/encode (list->vector (map (λ (l) (zip cons items l))
+                                                  (db-get table items))))))))
 
 (define (make-simple-adder constructor redir)
   (λ (req)
@@ -602,13 +638,13 @@ ORDER BY cast(timestamp as int) desc"
                                     (s3/execute (db) "INSERT INTO uploads (location, timestamp) VALUES (?, current_timestamp)" (list filename))))
                                  (r/response code => 200))))
 
-   "/api/uploads"     => (make-api-responder 'uploads    'id 'timestamp 'location)
-   "/api/roasteries"  => (make-api-responder 'roasteries 'id 'name 'image 'url 'notes)
-   "/api/methods"     => (make-api-responder 'methods    'id 'name 'image 'notes)
-   "/api/coffees"     => (make-api-responder 'coffees    'id 'name 'roastery 'roast_level 'image 'url 'notes)
-   "/api/grinders"    => (make-api-responder 'grinders   'id 'name 'image 'url 'notes)
-   "/api/gear"        => (make-api-responder 'gear       'id 'name 'url 'image 'notes)
-   "/api/brews"       => (make-api-responder 'brew       'id 'timestamp 'coffee 'grinder 'method 'gear 'local_p 'grind_level 'rating 'image 'dose 'yield 'notes)
+   "/api/uploads"     => (make-api-responder 'uploads)
+   "/api/roasteries"  => (make-api-responder 'roasteries)
+   "/api/methods"     => (make-api-responder 'methods)
+   "/api/coffees"     => (make-api-responder 'coffees)
+   "/api/grinders"    => (make-api-responder 'grinders)
+   "/api/gear"        => (make-api-responder 'gear)
+   "/api/brews"       => (make-api-responder 'brew)
 
    "m/^\\/uploads\\/[0-9]+$/" => (λ (r)
                                    (let ((id (string->number (last ((string->regex "c/\\//") (get r 'path 'bug)) 0))))
@@ -628,10 +664,15 @@ ORDER BY cast(timestamp as int) desc"
     (λ (p)
       (for-each (λ (f) (f p)) fs))))
 
+(define schema
+  (interact 'schema (tuple 'dump)))
+
 (λ (_)
   (let ((ptr (s3/open *db-file*)))
     (migrate! ptr)
     (s3/close ptr))
+
+  (start-schema-thread schema) ; re-start schema thread with defined schema
 
   (db-refresher)
   (r/fastcgi-bind *port* app (r/make-stdout-logger)))
