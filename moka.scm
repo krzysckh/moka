@@ -271,6 +271,7 @@
             (i "upload")
             ((input (name . ,id)
                     (type . "file")
+                    (class . "__up_input")
                                         ; (accept . "image/png image/jpg image/gif image/heic image/heic-sequence")
                     ,@(if (not (null? required?)) '((required . "true")) '()))))))
         ((image)
@@ -387,7 +388,7 @@
                     '(timestamp location)
                     '(script
                       "const form = document.getElementsByTagName('form')[0];"
-                      "const input = document.getElementsByTagName('input')[0];"
+                      "const input = document.getElementsByClassName('__up_input')[0];"
                       "form.addEventListener('submit', (e) => {e.preventDefault(); put_image(input.files[0], () => {window.location = '/uploads'});})"
                       )
                     ))
