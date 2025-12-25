@@ -6,8 +6,8 @@ LDFLAGS=-L/usr/local/lib -lsqlite3 -lm -lpthread
 
 .SUFFIXES: .scm .c
 
-all: moka
-run:
+all: moka static/beercss
+run: static/beercss
 	$(OL) $(OFLAGS) -r moka.scm
 .scm.c:
 	$(OL) $(OFLAGS) -O1 -x c -o $@ $<
@@ -15,6 +15,9 @@ moka: moka.c
 	$(CC) $(CFLAGS) -static -o $@ $< $(LDFLAGS)
 clean:
 	rm -f moka.c moka
+static/beercss:
+	wget -O static/beercss.tgz "https://pub.krzysckh.org/beercss.tgz"
+	( cd static && tar xvzf beercss.tgz )
 auto-install: all
 	useradd -k /var/empty -L daemon -d /var/moka -m -s /sbin/nologin _moka || echo "user already exists. that's okay"
 	cp -v moka /var/moka/moka

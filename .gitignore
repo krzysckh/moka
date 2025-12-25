@@ -3,3 +3,4 @@ static/uploads/*
 *.db
 moka
 *.c
+static/beercss*

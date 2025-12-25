@@ -111,7 +111,7 @@ function load_upload_id(id) {
 
         for (let up of ups.reverse()) {
           const el = make_img(i => {
-            i.src = up['location']
+            i.src = '/' + up['location']
           }, b => {
             b.addEventListener('click', () => {
               it.value = up['id'];
