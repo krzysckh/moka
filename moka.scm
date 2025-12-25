@@ -448,7 +448,7 @@ ORDER BY cast(timestamp as int) desc"
     ()))
 
 (define (render-coffee c)
-  `((article (class . "no-padding border round"))
+  `((article (class . "no-padding border medium"))
     ((img (class . "responsive small top-round") (loading . "lazy") (src . ,(str "/uploads/" (get c 'image 0)))))
     ((div (class . "padding"))
      (h5 ,(str (get c 'coffees.name #f)))
@@ -465,11 +465,13 @@ ORDER BY cast(timestamp as int) desc"
                    content => (make-page
                                `((p "pozdro")
                                  ((article (class . "border"))
-                                  (h3 "kawka wypita (ziarna)")
+                                  (h3 "kawka wypita (ziarna, łącznie)")
                                   (h6 ,(str (car* (car* (s3/execute (db) "SELECT CAST(SUM(dose) AS integer) FROM brews" #n))) "g"))
                                   (p "no, gratulacje. oby tak dalej. lecz sie."))
-                                 ((nav (class . "row scroll"))
-                                  ,@(map render-coffee (db-get-latest-brews)))
+                                 ((article (class . "border"))
+                                  (h3 "a tak wyglądał twój ostatni tydzień")
+                                  ((nav (class . "row scroll"))
+                                   ,@(map render-coffee (db-get-latest-brews))))
                                  )))))
 
 (define-values (route-/roasteries route-/edit/roasteries)
