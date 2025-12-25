@@ -203,6 +203,10 @@
         (execute* p (str "SELECT " (list->sql-list items) " FROM " table) #n)
         (car* (execute* p (str "SELECT " (list->sql-list items) " FROM " table " WHERE id = ?") (list (car id)))))))
 
+(define (db-get-where table items where arg)
+  (lets ((p (db)))
+    (execute* p (str "SELECT " (list->sql-list items) " FROM " table " " where) arg)))
+
 (define known-routes
   `(("opinia"   "coffee"       "/brews")
     ("obrazki"  "image"        "/uploads")
@@ -225,9 +229,11 @@
       ((script (type . "module") (src . "https://cdn.jsdelivr.net/npm/material-dynamic-colors@1.1.2/dist/cdn/material-dynamic-colors.min.js"))))
      ((body (class . "dark"))
       ((nav (class . "m l left max"))
-       ;;; TODO: header
-       ;; (header
-       ;;  (h3 "moka"))
+       (header
+        ((button (class . "extend square round")
+                 (onClick . "window.location = '/'"))
+         (i "kettle")
+         (span "moka")))
        ,@(map
           (λ (it)
             `((a (href . ,(caddr it)))
@@ -236,7 +242,11 @@
           known-routes))
       ((main (class . "responsive"))
        ,@body)
-      ((nav (class . "s bottom"))
+      ((nav (class . "s bottom scroll"))
+       (header
+        ((button (class . "extend square round")
+                 (onClick . "window.location = '/'"))
+         (i "kettle")))
        ,@(map
           (λ (it)
             `((a (href . ,(caddr it)))
@@ -318,7 +328,7 @@
             (if (and defaults (not (null? (cdr* defaults)))) (cdr* defaults) (make-list (len lst) #f)))
      ((label (class . "field"))
       ((button (class . "circle extra"))
-       (i "add"))))))
+       (i "add"))))))                   ;
 
 (define (make-list-of table items)
   (let ((its (db-get table (cons 'id items))))
@@ -361,12 +371,68 @@
         content => (make-page `(,(make-form edit-route add-text input vs))))
        (r/response code => 400)))))
 
+(define week (* 60 60 24 7))
+
+(define (db-get-latest-brews)
+  (lets ((ks '(brews.timestamp
+               brews.local_p
+               brews.grind_level
+               brews.rating
+               brews.image
+               brews.dose
+               brews.yield
+               brews.notes
+               brews.local_p
+               brews.timestamp
+               grinders.name
+               coffees.name
+               methods.name
+               gear.name
+               ))
+         (ks* (map (λ (k) (string->symbol ((string->regex "s/^brews\\.//") (str k)))) ks)))
+    (map (λ (l) (list->ff (zip cons ks* l)))
+         (db-get-where
+          'brews ks
+          "
+LEFT JOIN coffees  ON coffee  = coffees.id
+LEFT JOIN grinders ON grinder = grinders.id
+LEFT JOIN methods  ON method  = methods.id
+LEFT JOIN gear     ON gear    = gear.id
+WHERE timestamp is not null and cast(timestamp as int) > ?
+ORDER BY cast(timestamp as int) desc"
+          (list (str (- (time) week)))))))
+
+(define (maybe-string->number s)
+  (cond
+   ((equal? s "") 0)
+   ((string? s) (string->number s))
+   (else s)))
+
+(define (maybe-render-key ff key f)
+  (if-lets ((g (get ff key #f)))
+    `(,(f g))
+    ()))
+
+(define (render-coffee c)
+  `((article (class . "no-padding border round"))
+    ((img (class . "responsive small top-round") (loading . "lazy") (src . ,(str "/uploads/" (get c 'image 0)))))
+    ((div (class . "padding"))
+     (h5 ,(str (get c 'coffees.name #f)))
+     (ul
+      (li ,(date-str (maybe-string->number (get c 'timestamp 0)) *tz-offset*))
+      ,@(maybe-render-key c 'grinders.name (λ (g) `(li "zmemłana: "   ,(str g))))
+      ,@(maybe-render-key c 'methods.name  (λ (g) `(li "metodą: "     ,(str g))))
+      ,@(maybe-render-key c 'gear.name     (λ (g) `(li "narzędziem: " ,(str g))))))))
+
 (define route-/ (λ (req)
                   (r/response
                    code => 200
                    headers => '((Content-type . "text/html"))
                    content => (make-page
-                               `((p "pozdro"))))))
+                               `((p "pozdro")
+                                 ((nav (class . "row scroll"))
+                                  ,@(map render-coffee (db-get-latest-brews)))
+                                 )))))
 
 (define-values (route-/roasteries route-/edit/roasteries)
   (make-page-routes "dodaj palarnię"
