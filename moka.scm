@@ -237,6 +237,14 @@
         (execute* p (str "SELECT " (list->sql-list items) " FROM " table) #n)
         (car* (execute* p (str "SELECT " (list->sql-list items) " FROM " table " WHERE id = ?") (list (car id)))))))
 
+;; db-get bug yields ff
+(define (db-get* table items . id)
+  (if (null? id)
+      (map
+       (λ (l) (list->ff (zip cons items l)))
+       (db-get table items))
+      (list->ff (zip cons items (db-get table items (car id))))))
+
 (define (db-get-where table items where arg)
   (lets ((p (db)))
     (execute* p (str "SELECT " (list->sql-list items) " FROM " table " " where) arg)))
@@ -418,6 +426,7 @@
                brews.notes
                brews.local_p
                brews.timestamp
+               brews.id
                grinders.name
                coffees.name
                methods.name
@@ -447,8 +456,9 @@ ORDER BY cast(timestamp as int) desc"
     `(,(f g))
     ()))
 
-(define (render-coffee c)
-  `((article (class . "no-padding border medium"))
+(define (render-brew c)
+  `((article (class . "no-padding border medium top-round")
+             (onClick . ,(str "window.location = '/brews/" (get c 'id 0) "'")))
     ((img (class . "responsive small top-round") (loading . "lazy") (src . ,(str "/uploads/" (get c 'image 0)))))
     ((div (class . "padding"))
      (h5 ,(str (get c 'coffees.name #f)))
@@ -469,9 +479,9 @@ ORDER BY cast(timestamp as int) desc"
                                   (h6 ,(str (car* (car* (s3/execute (db) "SELECT CAST(SUM(dose) AS integer) FROM brews" #n))) "g"))
                                   (p "no, gratulacje. oby tak dalej. lecz sie."))
                                  ((article (class . "border"))
-                                  (h3 "a tak wyglądał twój ostatni tydzień")
+                                  (h3 "twój ostatni tydzień")
                                   ((nav (class . "row scroll"))
-                                   ,@(map render-coffee (db-get-latest-brews))))
+                                   ,@(map render-brew (db-get-latest-brews))))
                                  )))))
 
 (define-values (route-/roasteries route-/edit/roasteries)
@@ -591,8 +601,81 @@ ORDER BY cast(timestamp as int) desc"
         code => 405
         content => "Method not allowed")))))
 
+(define (fold2* op acc l1 l2)
+  (if (or (null? l1) (null? l2))
+      acc
+      (fold2* op (op acc (car l1) (car l2)) (cdr l1) (cdr l2))))
+
+(define (map2 op l1 l2)
+  (if (or (null? l1) (null? l2))
+      #n
+      (cons
+       (op (car l1) (car l2))
+       (map2 op (cdr l1) (cdr l2)))))
+
+;; /table/[0-9]+
+;; this sucks
+(define (get* it table thing)
+  (get it (string->symbol (str table "." thing)) #f))
+
+(define (make-content-renderer table)
+  (let ((schema (get-schema table)))
+    (λ (r)
+      (lets ((id (string->number (last ((string->regex "c/\\//") (get r 'path 'bug)) 0)))
+             (rels (ff-fold (λ (a k v) (if (and (list? v) (not (eq? (cadr v) 'uploads))) (cons k a) a)) #n schema)) ; of COURSE uploads are handled differently
+             (trels (map (λ (r) (cadr (get schema r 'bug))) rels))
+             (rel-names (map (λ (s) (string->symbol (str s ".name"))) trels)) ; WILD assumption that all relations (outside of uploads) have a .name
+             (rel-list (list->sql-list rel-names))
+             (rel-list (if (null? rels) rel-list (str ", " rel-list)))
+             (schema-items (map (λ (s) (string->symbol (str table "." s))) (keys schema)))
+             (sql (str
+                   "SELECT "
+                   (list->sql-list schema-items)
+                   rel-list
+                   " FROM " table
+                   (fold2* (λ (a tbl name) (str a " LEFT JOIN " tbl " ON " tbl ".id = " table "." name)) "" trels rels)
+                   " WHERE " table ".id = ?"))
+             (it* (car* (execute* (db) sql (list id)))))
+        (if (null? it*)
+            (r/response code => 404)
+            (let ((it (list->ff (zip cons (append (keys schema) rel-names) it*))))
+              (r/response
+               code    => 200
+               headers => '((Content-type . "text/html"))
+               content => (make-page
+                           `(((article (class . "no-padding top-round border max"))
+                              ((img (class . "responsive medium top-round") (loading . "lazy") (src . ,(str "/uploads/" (get it 'image 0)))))
+                              ((div (class . "padding"))
+                               (table
+                                (tbody
+                                 ,@(reverse
+                                    (ff-fold
+                                     (λ (a k v)
+                                       (let ((s (get schema k 'not-there)))
+                                         (cond
+                                          ((and (list? s) (eq? (cadr s) 'uploads)) a)
+                                          ((list? s)
+                                           (let ((v* (get* it (cadr s) 'name)))
+                                             (if v*
+                                                 (cons `(tr (td (b ,(str k)))
+                                                            (td ((a (class . "link")
+                                                                    (href . ,(str "/" (cadr s) "/" v)))
+                                                                 ,(str v*))))
+                                                       a)
+                                                 a)))
+                                          ((eq? s 'not-there) a)
+                                          (else
+                                           (cons `(tr (td (b ,(str k))) (td ,(str v))) a)))))
+                                    #n
+                                    it))
+
+                               )))))))))))))
+
 (define (compress-image filename-from filename-to)
   (system `("convert" ,filename-from "-resize" "640" "-quality" "90" ,filename-to)))
+
+(define (/id tbl)
+  (format #f "m/^\\/~a\\/[0-9]+$/" tbl))
 
 (define app
   (r/make-dispatcher
@@ -605,6 +688,13 @@ ORDER BY cast(timestamp as int) desc"
    "/grinders"        => route-/grinders
    "/gear"            => route-/gear
    "/brews"           => route-/brews
+
+   (/id 'roasteries)  => (make-content-renderer 'roasteries)
+   (/id 'methods)     => (make-content-renderer 'methods)
+   (/id 'coffees)     => (make-content-renderer 'coffees)
+   (/id 'grinders)    => (make-content-renderer 'grinders)
+   (/id 'gear)        => (make-content-renderer 'gear)
+   (/id 'brews)       => (make-content-renderer 'brews)
 
    "/edit/roasteries" => route-/edit/roasteries
    "/edit/uploads"    => route-/edit/uploads
