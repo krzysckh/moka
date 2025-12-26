@@ -413,9 +413,7 @@
         content => (make-page `(,(make-form edit-route add-text input vs))))
        (r/response code => 400)))))
 
-(define week (* 60 60 24 7))
-
-(define (db-get-latest-brews)
+(define (db-get-brews where vs)
   (lets ((ks '(brews.timestamp
                brews.local_p
                brews.grind_level
@@ -436,14 +434,25 @@
     (map (λ (l) (list->ff (zip cons ks* l)))
          (db-get-where
           'brews ks
-          "
+          (str "
 LEFT JOIN coffees  ON coffee  = coffees.id
 LEFT JOIN grinders ON grinder = grinders.id
 LEFT JOIN methods  ON method  = methods.id
-LEFT JOIN gear     ON gear    = gear.id
-WHERE timestamp is not null and cast(timestamp as int) > ?
+LEFT JOIN gear     ON gear    = gear.id " where) vs))))
+
+(define week (* 60 60 24 7))
+
+(define (db-get-latest-brews)
+  (db-get-brews
+   "WHERE timestamp is not null and cast(timestamp as int) > ?
 ORDER BY cast(timestamp as int) desc"
-          (list (str (- (time) week)))))))
+   (list (str (- (time) week)))))
+
+(define (db-get-best-brews)
+  (db-get-brews "WHERE rating IS NOT NULL AND rating <> '' ORDER BY cast(brews.rating as int) desc LIMIT 10" #n))
+
+(define (db-get-worst-brews)
+  (db-get-brews "WHERE rating IS NOT NULL AND rating <> '' ORDER BY cast(brews.rating as int) asc LIMIT 10" #n))
 
 (define (maybe-string->number s)
   (cond
@@ -482,6 +491,14 @@ ORDER BY cast(timestamp as int) desc"
                                   (h3 "twój ostatni tydzień")
                                   ((nav (class . "row scroll"))
                                    ,@(map render-brew (db-get-latest-brews))))
+                                 ((article (class . "border"))
+                                  (h3 "najlepsze kawki dotychczas")
+                                  ((nav (class . "row scroll"))
+                                   ,@(map render-brew (db-get-best-brews))))
+                                 ((article (class . "border"))
+                                  (h3 "najgorsze kawki dotychczas")
+                                  ((nav (class . "row scroll"))
+                                   ,@(map render-brew (db-get-worst-brews))))
                                  )))))
 
 (define-values (route-/roasteries route-/edit/roasteries)
