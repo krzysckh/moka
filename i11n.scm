@@ -1,0 +1,50 @@
+(make-i11n (PL)
+ global.app-name            => "moka"
+
+ global.naming.name         => "nazwa"
+ global.naming.image        => "obrazek"
+ global.naming.notes        => "notka"
+ global.naming.roastery     => "palarnia"
+ global.naming.url          => "link"
+ global.naming.roast-level  => "poziom wypału"
+ global.naming.coffee       => "kawka"
+ global.naming.grinder      => "młynek"
+ global.naming.method       => "metoda"
+ global.naming.gear         => "zaparzacz"
+ global.naming.grind-level  => "klik na młynku"
+ global.naming.local?       => "w domu?"
+ global.naming.rating       => "ocenka"
+ global.naming.dose         => "ilość ziaren kawy (w gramach)"
+ global.naming.yield        => "ilość wynikowej kawy (w gramach)"
+ global.naming.timestamp    => "data/godzina (unix timestamp)"
+
+ menu.opinion               => "opinie"
+ menu.images                => "obrazki"
+ menu.roasteries            => "palarnie"
+ menu.methods               => "metody"
+ menu.coffees               => "kawki"
+ menu.grinders              => "młynki"
+ menu.gear                  => "machiny"
+
+ upload.choose              => "wybierz "
+
+ list.actions               => "działania"
+
+ render.brew.grinded/w      => "zmemłana: "
+ render.brew.w/method       => "metodą: "
+ render.brew.w/gear         => "narzędziem: "
+
+ render.main.bean-sum       => "kawka wypita (ziarna, łącznie)"
+ render.main.congrats       => "no, gratulacje. oby tak dalej. lecz się."
+ render.main.last-week      => "twój ostatni tydzień"
+ render.main.best           => "najlepsze kawki dotychczas"
+ render.main.worst          => "najgorsze kawki dotychczas"
+
+ render.add.roastery        => "dodaj palarnię"
+ render.add.upload          => "dodaj obrazek"
+ render.add.method          => "dodaj metodę"
+ render.add.coffee          => "dodaj kawkę"
+ render.add.grinder         => "dodaj młynek"
+ render.add.gear            => "dodaj machinę (ekspres, drip, kawiarka, ...)"
+ render.add.brew            => "dodaj opinię"
+ )

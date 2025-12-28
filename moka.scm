@@ -12,6 +12,7 @@
  (prefix (robusta mime) r/)
  (prefix (robusta encoding html) html/)
  (prefix (robusta encoding json) json/)
+ (robusta i11n)
  )
 
 (when (not (has? *features* 'sqlite))
@@ -21,6 +22,11 @@
  (prefix (ext sqlite io) s3/))
 
 ,load "moka-config.scm"
+
+(define i11n (make-i11n-getter *language*))
+(start-i11nizer)
+
+,load "i11n.scm"
 
 (define (execute* ptr s arg)
   (map
@@ -251,13 +257,13 @@
     (execute* p (str "SELECT " (list->sql-list items) " FROM " table " " where) arg)))
 
 (define known-routes
-  `(("opinia"   "coffee"       "/brews")
-    ("obrazki"  "image"        "/uploads")
-    ("palarnie" "mode_heat"    "/roasteries")
-    ("metody"   "procedure"    "/methods")
-    ("kawki"    "local_cafe"   "/coffees")
-    ("młynki"   "cyclone"      "/grinders")
-    ("machiny"  "coffee_maker" "/gear")
+  `((,(i11n 'menu.opinion)    "coffee"       "/brews")
+    (,(i11n 'menu.images)     "image"        "/uploads")
+    (,(i11n 'menu.roasteries) "mode_heat"    "/roasteries")
+    (,(i11n 'menu.methods)    "procedure"    "/methods")
+    (,(i11n 'menu.coffees)    "local_cafe"   "/coffees")
+    (,(i11n 'menu.grinders)   "cyclone"      "/grinders")
+    (,(i11n 'menu.gear)       "coffee_maker" "/gear")
     ))
 
 (define (make-page body)
@@ -276,7 +282,7 @@
         ((button (class . "extend square round")
                  (onClick . "window.location = '/'"))
          (i "kettle")
-         (span "moka")))
+         (span ,(i11n 'global.app-name))))
        ,@(map
           (λ (it)
             `((a (href . ,(caddr it)))
@@ -334,7 +340,7 @@
                     ,@(if default `((value . ,(str! default))) '())
                     ,@(if (not (null? required?)) '((required . "true")) '()))
              (label ,label)))
-           ((button (type . "button") (onClick . ,(str "load_upload_id('" id "')"))) "wybierz " ,label)
+           ((button (type . "button") (onClick . ,(str "load_upload_id('" id "')"))) ,(i11n 'upload.choose) ,label)
            ))
         ((relation tbl)
          `((div (class . "row"))
@@ -343,7 +349,7 @@
                     ,@(if default `((value . ,(str! default))) '())
                     ,@(if (not (null? required?)) '((required . "true")) '()))
              (label ,label)))
-           ((button (type . "button") (onClick . ,(str "load_relation('" id "', '" tbl "')"))) "wybierz " ,label)
+           ((button (type . "button") (onClick . ,(str "load_relation('" id "', '" tbl "')"))) ,(i11n 'upload.choose) ,label)
            ))
         ((number from to)
          `((label (class . "field border label"))
@@ -380,7 +386,7 @@
        (thead
         (tr
          ,@(map (λ (x) `(th ,(str x))) items)
-         (th "actions")
+         (th ,(i11n 'list.actions))
          ))
        (tbody
         ,@(map
@@ -475,50 +481,49 @@ ORDER BY cast(timestamp as int) desc"
      (h5 ,(str (get c 'coffees.name #f)))
      (ul
       (li ,(date-str (maybe-string->number (get c 'timestamp 0)) *tz-offset*))
-      ,@(maybe-render-key c 'grinders.name (λ (g) `(li "zmemłana: "   ,(str g))))
-      ,@(maybe-render-key c 'methods.name  (λ (g) `(li "metodą: "     ,(str g))))
-      ,@(maybe-render-key c 'gear.name     (λ (g) `(li "narzędziem: " ,(str g))))))))
+      ,@(maybe-render-key c 'grinders.name (λ (g) `(li ,(i11n 'render.brew.grinded/w) ,(str g))))
+      ,@(maybe-render-key c 'methods.name  (λ (g) `(li ,(i11n 'render.brew.w/method)  ,(str g))))
+      ,@(maybe-render-key c 'gear.name     (λ (g) `(li ,(i11n 'render.brew.w/gear)    ,(str g))))))))
 
 (define route-/ (λ (req)
                   (r/response
                    code => 200
                    headers => '((Content-type . "text/html"))
                    content => (make-page
-                               `((p "pozdro")
-                                 ((article (class . "border"))
-                                  (h3 "kawka wypita (ziarna, łącznie)")
+                               `(((article (class . "border"))
+                                  (h3 ,(i11n 'render.main.bean-sum))
                                   (h6 ,(str (car* (car* (s3/execute (db) "SELECT CAST(SUM(dose) AS integer) FROM brews" #n))) "g"))
-                                  (p "no, gratulacje. oby tak dalej. lecz sie."))
+                                  (p ,(i11n 'render.main.congrats)))
                                  ((article (class . "border"))
-                                  (h3 "twój ostatni tydzień")
+                                  (h3 ,(i11n 'render.main.last-week))
                                   ((nav (class . "row scroll"))
                                    ,@(map render-brew (db-get-latest-brews))))
                                  ((article (class . "border"))
-                                  (h3 "najlepsze kawki dotychczas")
+                                  (h3 ,(i11n 'render.main.best))
                                   ((nav (class . "row scroll"))
                                    ,@(map render-brew (db-get-best-brews))))
                                  ((article (class . "border"))
-                                  (h3 "najgorsze kawki dotychczas")
+                                  (h3 ,(i11n 'render.main.worst))
                                   ((nav (class . "row scroll"))
                                    ,@(map render-brew (db-get-worst-brews))))
                                  )))))
 
 (define-values (route-/roasteries route-/edit/roasteries)
-  (make-page-routes "dodaj palarnię"
+  (make-page-routes (i11n 'render.add.roastery)
                     "/new/roastery"
                     "/update/roastery"
-                    `((text  "name"  "nazwa" #t)
-                      (text  "url"   "link")
-                      (image "image" "obrazek")
-                      (text  "notes" "notka"))
+                    `((text  "name"  ,(i11n 'global.naming.name) #t)
+                      (text  "url"   ,(i11n 'global.naming.url))
+                      (image "image" ,(i11n 'global.naming.image))
+                      (text  "notes" ,(i11n 'global.naming.notes)))
                     'roasteries
                     '(name url notes)))
 
 (define-values (route-/uploads route-/edit/uploads)
-  (make-page-routes "dodaj obrazek"
+  (make-page-routes (i11n 'render.add.upload)
                     "#"
                     "#"
-                    `((upload "file" "nazwa" #t))
+                    `((upload "file" "file" #t)) ; TODO: what's up with the name here?
                     'uploads
                     '(timestamp location)
                     '(script
@@ -529,66 +534,66 @@ ORDER BY cast(timestamp as int) desc"
                     ))
 
 (define-values (route-/methods route-/edit/methods)
-  (make-page-routes "dodaj metodę"
+  (make-page-routes (i11n 'render.add.method)
                     "/new/method"
                     "/update/method"
-                    `((text  "name"  "nazwa" #t)
-                      (image "image" "obrazek")
-                      (text  "notes" "notka"))
+                    `((text  "name"  ,(i11n 'global.naming.name) #t)
+                      (image "image" ,(i11n 'global.naming.image))
+                      (text  "notes" ,(i11n 'global.naming.notes)))
                     'methods
                     '(name notes)))
 
 (define-values (route-/coffees route-/edit/coffees)
-  (make-page-routes "dodaj kawkę"
+  (make-page-routes (i11n 'render.add.coffee)
                     "/new/coffee"
                     "/update/coffee"
-                    `((text                  "name"        "nazwa"    #t)
-                      ((relation roasteries) "roastery"    "palarnia" #t)
-                      ((number 0 10)         "roast_level" "poziom wypalenia")
-                      (image                 "image"       "zdjęcie")
-                      (text                  "url"         "link")
-                      (text                  "notes"       "notka"))
+                    `((text                  "name"        ,(i11n 'global.naming.name)  #t)
+                      ((relation roasteries) "roastery"    ,(i11n 'global.naming.roastery) #t)
+                      ((number 0 10)         "roast_level" ,(i11n 'global.naming.roast-level))
+                      (image                 "image"       ,(i11n 'global.naming.image))
+                      (text                  "url"         ,(i11n 'global.naming.url))
+                      (text                  "notes"       ,(i11n 'global.naming.notes)))
                     'coffees
                     '(name roastery roast_level url notes)))
 
 (define-values (route-/grinders route-/edit/grinders)
-  (make-page-routes "dodaj młynek"
+  (make-page-routes (i11n 'render.add.grinder)
                     "/new/grinder"
                     "/update/grinder"
-                    `((text  "name"  "nazwa" #t)
-                      (image "image" "zdjęcie")
-                      (text  "url"   "link")
-                      (text  "notes" "notka"))
+                    `((text  "name"  ,(i11n 'global.naming.name) #t)
+                      (image "image" ,(i11n 'global.naming.image))
+                      (text  "url"   ,(i11n 'global.naming.url))
+                      (text  "notes" ,(i11n 'global.naming.notes)))
                     'grinders
                     '(name url notes)))
 
 (define-values (route-/gear route-/edit/gear)
-  (make-page-routes "dodaj machinę (ekspres, drip, kawiarka, ...)"
+  (make-page-routes (i11n 'render.add.gear)
                     "/new/gear"
                     "/update/gear"
-                    `((text  "name"  "nazwa" #t)
-                      (image "image" "obrazek")
-                      (text  "url"   "link")
-                      (text  "notes" "notka"))
+                    `((text  "name"  ,(i11n 'global.naming.name) #t)
+                      (image "image" ,(i11n 'global.naming.image))
+                      (text  "url"   ,(i11n 'global.naming.url))
+                      (text  "notes" ,(i11n 'global.naming.notes)))
                     'gear
                     '(name url notes)))
 
 (define-values (route-/brews route-/edit/brews)
-  (make-page-routes "dodaj opinię"
+  (make-page-routes (i11n 'render.add.brew)
                     "/new/brew"
                     "/update/brew"
-                    `((text                "timestamp"   "data/godzina (unix timestamp)")
-                      ((relation coffees)  "coffee"      "kawka")
-                      ((relation grinders) "grinder"     "młynek")
-                      ((relation methods)  "method"      "metoda")
-                      ((relation gear)     "gear"        "zaparzacz")
-                      (bool                "local_p"     "w domu?" #t)
-                      ((number 0 100)      "grind_level" "klik na młynku")
-                      ((number 0 10)       "rating"      "ocenka")
-                      (image               "image"       "obrazek")
-                      ((number 0 1000)     "dose"        "ilość ziaren kawy (w gramach)")
-                      ((number 0 1000)     "yield"       "ilość wynikowej kawy (w gramach")
-                      (text                "notes"       "notka")
+                    `((text                "timestamp"  ,(i11n 'global.naming.timestamp))
+                      ((relation coffees)  "coffee"     ,(i11n 'global.naming.coffee))
+                      ((relation grinders) "grinder"    ,(i11n 'global.naming.grinder))
+                      ((relation methods)  "method"     ,(i11n 'global.naming.method))
+                      ((relation gear)     "gear"       ,(i11n 'global.naming.gear))
+                      (bool                "local_p"    ,(i11n 'global.naming.local?) #t)
+                      ((number 0 100)      "grind_level",(i11n 'global.naming.grind-level))
+                      ((number 0 10)       "rating"     ,(i11n 'global.naming.rating))
+                      (image               "image"      ,(i11n 'global.naming.image))
+                      ((number 0 1000)     "dose"       ,(i11n 'global.naming.dose))
+                      ((number 0 1000)     "yield"      ,(i11n 'global.naming.yield))
+                      (text                "notes"      ,(i11n 'global.naming.notes))
                       )
                     'brews
                     '(timestamp coffee grinder method gear local_p grind_level rating image dose yield notes)))
@@ -782,11 +787,14 @@ ORDER BY cast(timestamp as int) desc"
 (define schema
   (interact 'schema (tuple 'dump)))
 
+(define i11n! (interact 'i11n (tuple 'dump)))
+
 (λ (_)
   (let ((ptr (s3/open *db-file*)))
     (migrate! ptr)
     (s3/close ptr))
 
+  (i11n!)
   (start-schema-thread schema) ; re-start schema thread with defined schema
 
   (db-refresher)
