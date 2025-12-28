@@ -375,25 +375,26 @@
 
 (define (make-list-of table items)
   (let ((its (db-get table (cons 'id items))))
-    `((table (class . "stripes"))
-      (thead
-       (tr
-        ,@(map (λ (x) `(th ,(str x))) items)
-        (th "actions")
-        ))
-      (tbody
-       ,@(map
-          (λ (it)
-            `(tr ,@(map (λ (x) `(td ,(str x))) (cdr it))
-                 (td
-                  ((form (action . ,(str "/edit/" table)) (method . "POST"))
-                   ((input (type . "hidden") (name . "id") (value . ,(str (car it)))))
-                   ((button (type . "submit")) (i "edit")))
-                  ;; ((form (action . ,(str "/delete/" table)) (method . "POST"))
-                  ;;  ((label (type . "hidden") (name . "id") (value . ,(str (car it)))))
-                  ;;  ((button (type . "submit")) (i "edit")))
-                       )))
-          its)))))
+    `((nav (class . "scroll max"))
+      ((table (class . "stripes"))
+       (thead
+        (tr
+         ,@(map (λ (x) `(th ,(str x))) items)
+         (th "actions")
+         ))
+       (tbody
+        ,@(map
+           (λ (it)
+             `(tr ,@(map (λ (x) `(td ,(str x))) (cdr it))
+                  (td
+                   ((form (action . ,(str "/edit/" table)) (method . "POST"))
+                    ((input (type . "hidden") (name . "id") (value . ,(str (car it)))))
+                    ((button (type . "submit")) (i "edit")))
+                   ;; ((form (action . ,(str "/delete/" table)) (method . "POST"))
+                   ;;  ((label (type . "hidden") (name . "id") (value . ,(str (car it)))))
+                   ;;  ((button (type . "submit")) (i "edit")))
+                   )))
+           its))))))
 
 ;; -> /rt /edit/rt
 (define (make-page-routes add-text add-route edit-route input tbl t-its . additional)

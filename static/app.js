@@ -94,19 +94,11 @@ function load_upload_id(id) {
   const refresh = () => {
     const dlg = make_dialog('wybierz obrazek', body => {
       fetch('/api/uploads').then(r => r.json()).then(ups => {
-        const rb = E('button', {classList: 'chip circle'});
-        rb.appendChild(E('i', {innerHTML: 'refresh'}));
-        rb.addEventListener('click', () => {
-          dlg.close();
-          refresh();
-        });
-
         const uploader = make_image_uploader(() => {
           dlg.close();
           refresh();
         });
 
-        uploader.appendChild(rb);
         body.appendChild(uploader);
 
         for (let up of ups.reverse()) {
@@ -139,7 +131,7 @@ function put_image(file, cont) {
 }
 
 function make_image_uploader(after_upload) {
-  const el = E('span');
+  const el = E('span', {classList: 'row'});
   const label = E('label', {classList: 'field border label'});
   const btn = E('button', {classList: 'chip circle'});
   btn.appendChild(E('i', {innerHTML: 'upload'}));
@@ -152,6 +144,13 @@ function make_image_uploader(after_upload) {
 
   btn.appendChild(input);
   el.appendChild(label);
-  el.appendChild(btn);
+  label.appendChild(btn);
+
+  const labelp = E('label', {classList: 'field border label'});
+  const rb = E('button', {classList: 'chip circle'});
+  rb.appendChild(E('i', {innerHTML: 'refresh'}));
+  rb.addEventListener('click', after_upload);
+  labelp.appendChild(rb);
+  el.appendChild(labelp);
   return el;
 }
