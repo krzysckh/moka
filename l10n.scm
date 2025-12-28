@@ -1,4 +1,4 @@
-(make-i11n (PL)
+(make-l10n (PL)
  global.app-name            => "moka"
 
  global.naming.name         => "nazwa"
