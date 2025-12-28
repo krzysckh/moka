@@ -9,6 +9,7 @@
  (prefix (robusta server) r/)
  (prefix (robusta http) r/)
  (prefix (robusta dispatcher) r/)
+ (prefix (robusta mime) r/)
  (prefix (robusta encoding html) html/)
  (prefix (robusta encoding json) json/)
  )
@@ -689,7 +690,8 @@ ORDER BY cast(timestamp as int) desc"
                                )))))))))))))
 
 (define (compress-image filename-from filename-to)
-  (system `("convert" ,filename-from "-resize" "640" "-quality" "90" ,filename-to)))
+  ;; (system `("convert" ,filename-from "-resize" "640" "-quality" "90" ,filename-to)))
+  (system `("convert" ,filename-from "-resize" "640" "-dither" "FloydSteinberg" "-remap" "netscape:" "-colors" "8" ,filename-to)))
 
 (define (/id tbl)
   (format #f "m/^\\/~a\\/[0-9]+$/" tbl))
@@ -741,7 +743,7 @@ ORDER BY cast(timestamp as int) desc"
                                 code => 405
                                 content => "Method not allowed")
                                (lets ((p (get req 'post-data #n))
-                                      (filename (str *uploads-dir* "/" (time-ns) ".jpg"))
+                                      (filename (str *uploads-dir* "/" (time-ns) ".gif"))
                                       (filename* (str filename "_orig")))
                                  (thread   ; TODO: maybe don't run this in a thread, but keep user waiting for the upload & conversion to finish
                                   (begin
@@ -765,7 +767,7 @@ ORDER BY cast(timestamp as int) desc"
                                            (r/response code => 404)
                                            (r/response
                                             code    => 200
-                                            headers => '((Content-type . "image/jpg"))
+                                            headers => `((Content-type . ,(r/path->mime (caar res))))
                                             content => (file->list (caar res)))))))
    "m/^\\/static/"    => (λ (r) (r/static-dispatcher "static" "/static" r))
    ))
