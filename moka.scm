@@ -691,9 +691,13 @@ ORDER BY cast(timestamp as int) desc"
                                           (else
                                            (cons `(tr (td (b ,(str k))) (td ,(str v))) a)))))
                                     #n
-                                    it))
-
-                               )))))))))))))
+                                    it)))))
+                              ((nav (class . "right-align padding"))
+                               ((form (method . "POST") (action . ,(format #f "/edit/~a" table)))
+                                ((label (class . "field border label"))
+                                 ((input (type . "hidden") (name . "id") (value . ,(str id))))
+                                 ((button (class . "extend square round") (type . "submit")) (i "edit")))))
+                              ))))))))))
 
 (define (compress-image filename-from filename-to)
   ;; (system `("convert" ,filename-from "-resize" "640" "-quality" "90" ,filename-to)))
