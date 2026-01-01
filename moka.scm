@@ -282,7 +282,7 @@
      ((body (class . "dark"))
       ((nav (class . "m l left max"))
        (header
-        ((button (class . "extend square round")
+        ((button (class . "")
                  (onClick . "window.location = '/'"))
          (i "kettle")
          (span ,(l10n 'global.app-name))))
@@ -296,7 +296,7 @@
        ,@body)
       ((nav (class . "s bottom scroll"))
        (header
-        ((button (class . "extend square round")
+        ((button (class . "square round")
                  (onClick . "window.location = '/'"))
          (i "kettle")))
        ,@(map
@@ -395,9 +395,12 @@
            (λ (it)
              `(tr ,@(map (λ (x) `(td ,(str x))) (cdr it))
                   (td
-                   ((form (action . ,(str "/edit/" table)) (method . "POST"))
-                    ((input (type . "hidden") (name . "id") (value . ,(str (car it)))))
-                    ((button (type . "submit")) (i "edit")))
+                   ((nav (class . "row"))
+                    ((form (action . ,(str "/edit/" table)) (method . "POST"))
+                     ((input (type . "hidden") (name . "id") (value . ,(str (car it)))))
+                     ((button (type . "submit")) (i "edit")))
+                    ((button (onClick . ,(str "window.location = '/" table "/" (car it) "'")))
+                     (i "arrow_right")))
                    ;; ((form (action . ,(str "/delete/" table)) (method . "POST"))
                    ;;  ((label (type . "hidden") (name . "id") (value . ,(str (car it)))))
                    ;;  ((button (type . "submit")) (i "edit")))
@@ -697,7 +700,7 @@ ORDER BY cast(timestamp as int) desc"
                content => (make-page
                            `(((article (class . "no-padding top-round border max"))
                               ((img (class . "responsive medium top-round") (loading . "lazy") (src . ,(str "/uploads/" (get it 'image 0)))))
-                              ((div (class . "padding"))
+                              ((div (class . "padding max"))
                                (table
                                 (tbody
                                  ,@(reverse
@@ -718,13 +721,13 @@ ORDER BY cast(timestamp as int) desc"
                                           ((eq? s 'not-there) a)
                                           (else
                                            (cons `(tr (td (b ,(str k))) (td ,(str v))) a)))))
-                                    #n
-                                    it)))))
-                              ((nav (class . "right-align padding"))
+                                     #n
+                                     it)))))
+                              ((div (class . "padding"))
                                ((form (method . "POST") (action . ,(format #f "/edit/~a" table)))
                                 ((label (class . "field border label"))
                                  ((input (type . "hidden") (name . "id") (value . ,(str id))))
-                                 ((button (class . "extend square round") (type . "submit")) (i "edit"))))))
+                                 ((button (class . "square round") (type . "submit")) (i "edit"))))))
                              ,@(map (λ (f) (f id)) (get *graphs* table #n))
                              )))))))))
 
