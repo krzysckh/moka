@@ -239,6 +239,7 @@
   )
 
 (define (db-get table items . id)
+
   (lets ((p (db)))
     (if (null? id)
         (execute* p (str "SELECT " (list->sql-list items) " FROM " table) #n)
@@ -274,6 +275,7 @@
       ((meta (charset . "utf-8")))
       ((link (href . "/static/beercss/beer.min.css") (rel . "stylesheet")))
       ((script (src . "/static/app.js")))
+      ((script (src . "/static/echarts.min.js")))
       ((script (type . "module") (src . "/static/beercss/beer.min.js")))
       ((script (type . "module") (src . "/static/beercss/material-dynamic-colors.min.js"))))
      ((body (class . "dark"))
@@ -506,6 +508,10 @@ ORDER BY cast(timestamp as int) desc"
                                   (h3 ,(l10n 'render.main.worst))
                                   ((nav (class . "row scroll"))
                                    ,@(map render-brew (db-get-worst-brews))))
+                                 ((article (class . "border large"))
+                                  (script "do_render('bean-history')")
+                                  (h3 ,(l10n 'render.main.bean-history))
+                                  ((div (class . "max scroll") (style . "width: 100%; height: 100%;") (id . "chrt-bean-history"))))
                                  )))))
 
 (define-values (route-/roasteries route-/edit/roasteries)
@@ -768,7 +774,7 @@ ORDER BY cast(timestamp as int) desc"
    "/api/coffees"     => (make-api-responder 'coffees)
    "/api/grinders"    => (make-api-responder 'grinders)
    "/api/gear"        => (make-api-responder 'gear)
-   "/api/brews"       => (make-api-responder 'brew)
+   "/api/brews"       => (make-api-responder 'brews)
 
    "m/^\\/uploads\\/[0-9]+$/" => (λ (r)
                                    (let ((id (string->number (last ((string->regex "c/\\//") (get r 'path 'bug)) 0))))

@@ -4,3 +4,4 @@ static/uploads/*
 moka
 *.c
 static/beercss*
+static/*.min.js

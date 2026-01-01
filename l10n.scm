@@ -39,6 +39,7 @@
  render.main.last-week      => "twój ostatni tydzień"
  render.main.best           => "najlepsze kawki dotychczas"
  render.main.worst          => "najgorsze kawki dotychczas"
+ render.main.bean-history   => "historia pożegnanych ziaren"
 
  render.add.roastery        => "dodaj palarnię"
  render.add.upload          => "dodaj obrazek"

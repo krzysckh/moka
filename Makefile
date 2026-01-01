@@ -4,10 +4,12 @@ OFLAGS=-i third-party/robusta
 CFLAGS=-O2 -I/usr/local/include
 LDFLAGS=-L/usr/local/lib -lsqlite3 -lm -lpthread
 
+STATIC_DOWNLOADS=static/beercss static/echarts.min.js
+
 .SUFFIXES: .scm .c
 
-all: moka static/beercss
-run: static/beercss
+all: moka $(STATIC_DOWNLOADS)
+run: $(STATIC_DOWNLOADS)
 	$(OL) $(OFLAGS) -r moka.scm
 .scm.c:
 	$(OL) $(OFLAGS) -O1 -x c -o $@ $<
@@ -17,6 +19,9 @@ clean:
 	rm -f moka.c moka
 static/beercss:
 	wget -O static/beercss.tgz "https://pub.krzysckh.org/beercss.tgz"
+	( cd static && tar xvzf beercss.tgz )
+static/echarts.min.js:
+	wget -O static/echarts.min.js "https://pub.krzysckh.org/echarts6.min.js"
 	( cd static && tar xvzf beercss.tgz )
 auto-install: all
 	useradd -k /var/empty -L daemon -d /var/moka -m -s /sbin/nologin _moka || echo "user already exists. that's okay"
