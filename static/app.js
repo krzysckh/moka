@@ -163,91 +163,125 @@ function date_to_day(d) {
   return dp.getTime();
 }
 
-function with_coffee_data(cont) {
-  fetch('/api/coffees').then(d => d.json()).then(vs => {
-    const coffee_data_cache = [];
-    vs.forEach(v => {
-      coffee_data_cache[v.id] = v;
+function make_with_thing(route, or) {
+  return function(cont) {
+    fetch(route).then(d => d.json()).then(vs => {
+      const cache = [];
+      vs.forEach(v => {
+        cache[v.id] = v;
+      });
+      cont(id => cache[id] || (or || {}));
     });
-    cont(id => coffee_data_cache[id] || {name: "unknown"})
-  });
+  }
 }
 
+const with_coffee_data = make_with_thing('/api/coffees', {name: "unknown"});
+const with_method_data = make_with_thing('/api/methods', {name: "unknown"});
+
 function do_render(it) {
-  render_lst.push(() => {
-    with_coffee_data(coffee_data => {
-      let el = document.getElementById(`chrt-${it}`);
-      switch (it) {
-      case 'bean-history':
-        fetch('/api/brews').then(d => d.json()).then((d) => {
-          const lst = d.sort((a, b) => a.timestamp < b.timestamp).map(it => {
-            it.date = new Date(it.timestamp * 1000)
-            return it;
-          });
-          const days = lst.reduce((l, v) => {
-            const t = date_to_day(v.date);
-            if (l[t] == undefined)
-              l[t] = [];
-            l[t].push(v);
-            return l;
-            // if (l[t] != undefined)
-            //   l[t] += v.dose;
-            // else
-            //   l[t] = v.dose;
-            // return l;
-          }, {});
-          const xs = Object.keys(days).map(x => parseInt(x)).sort((a, b) => a > b);
-          const ys = xs.map(v => days[v].reduce((a, b) => a+b.dose, 0));
-          let myChart = echarts.init(el);
-          let option = {
-            xAxis: {
-              data: xs,
-              axisLabel: {
-                formatter: (v) => {
-                  return new Date(parseInt(v)).toLocaleDateString()
-                }
-              }
-            },
-            yAxis: {},
-            series: [{
-              type: 'line',
-              data: ys,
-            }],
-            tooltip: {
-              renderMode: "html",
-              backgroundColor: "var(--background)",
-              border: "none",
-              borderWidth: 0,
-              padding: 0,
-              margin: 0,
-              boxShadow: "none",
-              trigger: "axis",
-              axisPointer: {
-                type: "shadow",
-              },
-              formatter: (param) => {
-                const d = days[param[0].axisValue];
-                const el = E('div', {classList: "padding no-border"});
-                const ul = E('ul');
-                el.appendChild(ul);
-                d.sort((a, b) => a.timestamp > b.timestamp).forEach(it => {
-                  ul.appendChild(E('li', {innerHTML: `${coffee_data(it.coffee).name} (${it.dose}g)`}));
-                })
-                return el;
-              },
-            },
-          };
-          myChart.setOption(option);
+  render_lst.push((coffee_data, method_data) => {
+    let el = document.getElementById(`chrt-${it}`);
+    const chart = echarts.init(el, 'beer');
+    switch (it) {
+    case 'coffees-style-ratios':
+      /* we get data on coffees via el->x-data */
+      const data = JSON.parse(el.getAttribute('x-data'));
+      const opt = {
+        series: [{
+          type: 'pie',
+          data: Object.keys(data).map(k => { return { value: data[k],
+                                                     name: method_data(k).name,
+                                                     label: {
+                                                       textStyle: {
+                                                         color: 'white'
+                                                       }}}})
+        }],
+      };
+      chart.setOption(opt);
+      break;
+    case 'bean-history':
+      fetch('/api/brews').then(d => d.json()).then((d) => {
+        const lst = d.sort((a, b) => a.timestamp < b.timestamp).map(it => {
+          it.date = new Date(it.timestamp * 1000)
+          return it;
         });
-        break;
-      default:
-        console.error(`unknown do_render query: ${it}`);
-        break;
-      }
-    })
+        const days = lst.reduce((l, v) => {
+          const t = date_to_day(v.date);
+          if (l[t] == undefined)
+            l[t] = [];
+          l[t].push(v);
+          return l;
+        }, {});
+        const xs = Object.keys(days).map(x => parseInt(x)).sort((a, b) => a > b);
+        const ys = xs.map(v => days[v].reduce((a, b) => a+b.dose, 0));
+        const opt = {
+          xAxis: {
+            data: xs,
+            axisLabel: {
+              formatter: (v) => {
+                return new Date(parseInt(v)).toLocaleDateString()
+              }
+            }
+          },
+          yAxis: {},
+          series: [{
+            type: 'line',
+            data: ys,
+          }],
+          tooltip: {
+            renderMode: "html",
+            backgroundColor: "var(--background)",
+            border: "none",
+            borderWidth: 0,
+            padding: 0,
+            margin: 0,
+            boxShadow: "none",
+            trigger: "axis",
+            axisPointer: {
+              type: "shadow",
+            },
+            formatter: (param) => {
+              const d = days[param[0].axisValue];
+              const el = E('div', {classList: "padding no-border"});
+              const ul = E('ul');
+              el.appendChild(ul);
+              d.sort((a, b) => a.timestamp > b.timestamp).forEach(it => {
+                ul.appendChild(E('li', {innerHTML: `${coffee_data(it.coffee).name} (${it.dose}g)`}));
+              })
+              return el;
+            },
+          },
+        };
+        chart.setOption(opt);
+      });
+      break;
+    default:
+      console.error(`unknown do_render query: ${it}`);
+      break;
+    }
   })
 }
 
 window.onload = () => {
-  render_lst.forEach(f => f())
+  const st = window.getComputedStyle(document.body);
+  echarts.registerTheme(
+    'beer', {
+      color: [
+        st.getPropertyValue('--primary'),
+        st.getPropertyValue('--on-primary'),
+        st.getPropertyValue('--on-primary-container'),
+        st.getPropertyValue('--secondary'),
+        st.getPropertyValue('--on-secondary'),
+        st.getPropertyValue('--on-secondary-container'),
+        st.getPropertyValue('--teritary'),
+        st.getPropertyValue('--on-teritary'),
+        st.getPropertyValue('--on-teritary-container'),
+      ],
+  });
+
+  with_coffee_data(coffee_data => {
+    with_method_data(method_data => {
+      render_lst.forEach(f => f(coffee_data, method_data))
+    })
+  });
 }

@@ -41,6 +41,8 @@
  render.main.worst          => "najgorsze kawki dotychczas"
  render.main.bean-history   => "historia pożegnanych ziaren"
 
+ render.coffee.style-ratios => "sposoby zaparzania"
+
  render.add.roastery        => "dodaj palarnię"
  render.add.upload          => "dodaj obrazek"
  render.add.method          => "dodaj metodę"

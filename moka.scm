@@ -240,7 +240,6 @@
   )
 
 (define (db-get table items . id)
-
   (lets ((p (db)))
     (if (null? id)
         (execute* p (str "SELECT " (list->sql-list items) " FROM " table) #n)
@@ -256,6 +255,7 @@
 
 (define (db-get-where table items where arg)
   (lets ((p (db)))
+    ;; (print "will execute " (str "SELECT " (list->sql-list items) " FROM " table " " where) arg)
     (execute* p (str "SELECT " (list->sql-list items) " FROM " table " " where) arg)))
 
 (define known-routes
@@ -487,6 +487,15 @@ ORDER BY cast(timestamp as int) desc"
       ,@(maybe-render-key c 'methods.name  (λ (g) `(li ,(l10n 'render.brew.w/method)  ,(str g))))
       ,@(maybe-render-key c 'gear.name     (λ (g) `(li ,(l10n 'render.brew.w/gear)    ,(str g))))))))
 
+(define (article-graph id h3 . x-data)
+  `((article (class . "border large"))
+    (script ,(str "do_render('" id "')"))
+    (h3 ,(l10n h3))
+    ((div (x-data . ,(if (null? x-data) "" (car x-data)))
+          (class . "max scroll")
+          (style . "width: 100%; height: 100%;")
+          (id . ,(str "chrt-" id))))))
+
 (define route-/ (λ (req)
                   (r/response
                    code => 200
@@ -508,10 +517,7 @@ ORDER BY cast(timestamp as int) desc"
                                   (h3 ,(l10n 'render.main.worst))
                                   ((nav (class . "row scroll"))
                                    ,@(map render-brew (db-get-worst-brews))))
-                                 ((article (class . "border large"))
-                                  (script "do_render('bean-history')")
-                                  (h3 ,(l10n 'render.main.bean-history))
-                                  ((div (class . "max scroll") (style . "width: 100%; height: 100%;") (id . "chrt-bean-history"))))
+                                 ,(article-graph 'bean-history 'render.main.bean-history)
                                  )))))
 
 (define-values (route-/roasteries route-/edit/roasteries)
@@ -648,6 +654,22 @@ ORDER BY cast(timestamp as int) desc"
 (define (get* it table thing)
   (get it (string->symbol (str table "." thing)) #f))
 
+(define (make-article-graph id h3 data-fn)
+  (λ (id*)
+    (article-graph id h3 (data-fn id*))))
+
+(define *graphs*
+  (ff
+   'coffees (list (make-article-graph
+                   'coffees-style-ratios 'render.coffee.style-ratios
+                   (λ (id)
+                     (json/encode
+                      (map
+                       (λ (l) (cons (str (car l)) (cadr l)))
+                       (db-get-where 'brews '("distinct method" "count(method)") "where coffee = ? group by method" (list id))))))
+                  )
+   ))
+
 (define (make-content-renderer table)
   (let ((schema (get-schema table)))
     (λ (r)
@@ -702,8 +724,9 @@ ORDER BY cast(timestamp as int) desc"
                                ((form (method . "POST") (action . ,(format #f "/edit/~a" table)))
                                 ((label (class . "field border label"))
                                  ((input (type . "hidden") (name . "id") (value . ,(str id))))
-                                 ((button (class . "extend square round") (type . "submit")) (i "edit")))))
-                              ))))))))))
+                                 ((button (class . "extend square round") (type . "submit")) (i "edit"))))))
+                             ,@(map (λ (f) (f id)) (get *graphs* table #n))
+                             )))))))))
 
 (define (compress-image filename-from filename-to)
   ;; (system `("convert" ,filename-from "-resize" "640" "-quality" "90" ,filename-to)))
