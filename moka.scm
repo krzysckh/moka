@@ -3,6 +3,7 @@
 (import
  (owl toplevel)
  (owl unicode)
+ (owl metric)
  (prefix (owl sys) sys/)
  (prefix (robusta fastcgi) r/)
  (prefix (robusta log) r/)
@@ -303,8 +304,7 @@
             `((a (href . ,(caddr it)))
               (i ,(cadr it))
               (span ,(car it))))
-          known-routes))
-      ))))
+          known-routes))))))
 
 (define (str! it)
   (if (eq? it #f)
