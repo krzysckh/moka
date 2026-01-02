@@ -1,5 +1,7 @@
 const render_lst = [];
 
+const iota = to => [...new Array(to).keys()];
+
 function E(t, kv) {
   const el = document.createElement(t);
   for (let k of Object.keys(kv || {})) {
@@ -183,7 +185,31 @@ function do_render(it) {
     let el = document.getElementById(`chrt-${it}`);
     const chart = echarts.init(el, 'beer');
     switch (it) {
-    case 'coffees-style-ratios':
+    case 'coffee-rating-distribution': {
+      /* we get data on coffees via el->x-data */
+      const data = JSON.parse(el.getAttribute('x-data'));
+      const xs = iota(11);
+      const ys = new Array(11).fill(0)
+      Object.keys(data).forEach(k => {
+        const n = parseInt(k);
+        if (!isNaN(n))
+          ys[n] = data[k];
+      });
+      console.log(data);
+      console.log(ys);
+      const opt = {
+        xAxis: {
+          data: xs,
+        },
+        yAxis: {},
+        series: [{
+          type: 'bar',
+          data: ys,
+        }],
+      };
+      chart.setOption(opt);
+    } break;
+    case 'coffee-style-ratios': {
       /* we get data on coffees via el->x-data */
       const data = JSON.parse(el.getAttribute('x-data'));
       const opt = {
@@ -198,8 +224,8 @@ function do_render(it) {
         }],
       };
       chart.setOption(opt);
-      break;
-    case 'bean-history':
+    } break;
+    case 'bean-history': {
       fetch('/api/brews').then(d => d.json()).then((d) => {
         const lst = d.sort((a, b) => a.timestamp < b.timestamp).map(it => {
           it.date = new Date(it.timestamp * 1000)
@@ -254,7 +280,7 @@ function do_render(it) {
         };
         chart.setOption(opt);
       });
-      break;
+    } break;
     default:
       console.error(`unknown do_render query: ${it}`);
       break;

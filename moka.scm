@@ -663,14 +663,21 @@ ORDER BY cast(timestamp as int) desc"
 
 (define *graphs*
   (ff
-   'coffees (list (make-article-graph
-                   'coffees-style-ratios 'render.coffee.style-ratios
-                   (λ (id)
-                     (json/encode
-                      (map
-                       (λ (l) (cons (str (car l)) (cadr l)))
-                       (db-get-where 'brews '("distinct method" "count(method)") "where coffee = ? group by method" (list id))))))
-                  )
+   'coffees `(,(make-article-graph
+                'coffee-style-ratios 'render.coffee.style-ratios
+                (λ (id)
+                  (json/encode
+                   (map
+                    (λ (l) (cons (str (car l)) (cadr l)))
+                    (db-get-where 'brews '("distinct method" "count(method)") "where coffee = ? group by method" (list id))))))
+              ,(make-article-graph
+                'coffee-rating-distribution 'render.coffee.rating-distribution
+                (λ (id)
+                  (json/encode
+                   (map
+                    (λ (l) (cons (str (car l)) (cadr l)))
+                    (db-get-where 'brews '("distinct rating" "count(rating)") "where coffee = ? group by rating" (list id))))))
+              )
    ))
 
 (define (make-content-renderer table)
