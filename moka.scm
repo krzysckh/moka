@@ -700,7 +700,7 @@ ORDER BY cast(timestamp as int) desc"
                content => (make-page
                            `(((article (class . "no-padding top-round border max"))
                               ((img (class . "responsive medium top-round") (loading . "lazy") (src . ,(str "/uploads/" (get it 'image 0)))))
-                              ((div (class . "padding max"))
+                              ((nav (class . "padding"))
                                (table
                                 (tbody
                                  ,@(reverse
@@ -723,7 +723,7 @@ ORDER BY cast(timestamp as int) desc"
                                            (cons `(tr (td (b ,(str k))) (td ,(str v))) a)))))
                                      #n
                                      it)))))
-                              ((div (class . "padding"))
+                              ((div (class . "padding absolute bottom right"))
                                ((form (method . "POST") (action . ,(format #f "/edit/~a" table)))
                                 ((label (class . "field border label"))
                                  ((input (type . "hidden") (name . "id") (value . ,(str id))))
