@@ -14,8 +14,8 @@
  global.naming.grind-level          => "klik na młynku"
  global.naming.local?               => "w domu?"
  global.naming.rating               => "ocenka"
- global.naming.dose                 => "ilość ziaren kawy (w gramach)"
- global.naming.yield                => "ilość wynikowej kawy (w gramach)"
+ global.naming.dose                 => "doza (w gramach)"
+ global.naming.yield                => "uzysk (w gramach)"
  global.naming.timestamp            => "data/godzina (unix timestamp)"
 
  menu.opinion                       => "opinie"

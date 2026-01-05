@@ -563,7 +563,7 @@ ORDER BY cast(timestamp as int) desc"
                     "/new/coffee"
                     "/update/coffee"
                     `((text                  "name"        ,(l10n 'global.naming.name)  #t)
-                      ((relation roasteries) "roastery"    ,(l10n 'global.naming.roastery) #t)
+                      ((relation roasteries) "roastery"    ,(l10n 'global.naming.roastery))
                       ((number 0 10)         "roast_level" ,(l10n 'global.naming.roast-level))
                       (image                 "image"       ,(l10n 'global.naming.image))
                       (text                  "url"         ,(l10n 'global.naming.url))
