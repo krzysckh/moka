@@ -269,42 +269,46 @@
     ))
 
 (define (make-page body)
-  (html/encode
-   `(html
-     (head
-      ((meta (name . "viewport") (content . "width=device-width, initial-scale=1")))
-      ((meta (charset . "utf-8")))
-      ((link (href . "/static/beercss/beer.min.css") (rel . "stylesheet")))
-      ((script (src . "/static/app.js")))
-      ((script (src . "/static/echarts.min.js")))
-      ((script (type . "module") (src . "/static/beercss/beer.min.js")))
-      ((script (type . "module") (src . "/static/beercss/material-dynamic-colors.min.js"))))
-     ((body (class . "dark"))
-      ((nav (class . "m l left max"))
-       (header
-        ((button (class . "")
-                 (onClick . "window.location = '/'"))
-         (i "kettle")
-         (span ,(l10n 'global.app-name))))
-       ,@(map
-          (λ (it)
-            `((a (href . ,(caddr it)))
-              (i ,(cadr it))
-              (span ,(car it))))
-          known-routes))
-      ((main (class . "responsive"))
-       ,@body)
-      ((nav (class . "s bottom scroll"))
-       (header
-        ((button (class . "square round")
-                 (onClick . "window.location = '/'"))
-         (i "kettle")))
-       ,@(map
-          (λ (it)
-            `((a (href . ,(caddr it)))
-              (i ,(cadr it))
-              (span ,(car it))))
-          known-routes))))))
+  (λ (stream)
+    (html/encode/printer
+     `(html
+       (head
+        ((meta (name . "viewport") (content . "width=device-width, initial-scale=1")))
+        ((meta (charset . "utf-8")))
+        ((link (href . "/static/beercss/beer.min.css") (rel . "stylesheet")))
+        ((script (src . "/static/app.js")))
+        ((script (src . "/static/echarts.min.js")))
+        ((script (type . "module") (src . "/static/beercss/beer.min.js")))
+        ((script (type . "module") (src . "/static/beercss/material-dynamic-colors.min.js"))))
+       ((body (class . "dark"))
+        ((nav (class . "m l left max"))
+         (header
+          ((button (class . "")
+                   (onClick . "window.location = '/'"))
+           (i "kettle")
+           (span ,(l10n 'global.app-name))))
+         ,@(map
+            (λ (it)
+              `((a (href . ,(caddr it)))
+                (i ,(cadr it))
+                (span ,(car it))))
+            known-routes))
+        ((main (class . "responsive"))
+         ,@body)
+        ((nav (class . "s bottom scroll"))
+         (header
+          ((button (class . "square round")
+                   (onClick . "window.location = '/'"))
+           (i "kettle")))
+         ,@(map
+            (λ (it)
+              `((a (href . ,(caddr it)))
+                (i ,(cadr it))
+                (span ,(car it))))
+            known-routes))))
+     (html/make-streamer
+      (λ (s) (if (eof-object? s) #t (stream s)))
+      (<< 1 10)))))
 
 (define (str! it)
   (if (eq? it #f)
