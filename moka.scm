@@ -710,7 +710,14 @@ ORDER BY cast(timestamp as int) desc"
                headers => '((Content-type . "text/html"))
                content => (make-page
                            `(((article (class . "no-padding top-round border max"))
-                              ((img (class . "max center top-round") (loading . "lazy") (src . ,(str "/uploads/" (get it 'image 0)))))
+                              (div
+                               ((img (class . "responsive small top-round")
+                                     (loading . "lazy")
+                                     (src . ,(str "/uploads/" (get it 'image 0)))))
+                               ((div (class . "absolute bottom left right padding right-align"))
+                                ((button (class . "square round")
+                                         (onClick . ,(str "enlarge_image(" (get it 'image 0) ")")))
+                                 (i "expand_content"))))
                               ((nav (class . "padding"))
                                (table
                                 (tbody

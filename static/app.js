@@ -2,6 +2,8 @@ const render_lst = [];
 
 const iota = to => [...new Array(to).keys()];
 
+/* why in the name of someone important are some pieces of this code written in cps */
+
 function E(t, kv) {
   const el = document.createElement(t);
   for (let k of Object.keys(kv || {})) {
@@ -12,12 +14,14 @@ function E(t, kv) {
 
 function make_dialog(title, cont) {
   const dlg = document.createElement('dialog');
-  const h5 = document.createElement('h5');
   const art = document.createElement('article');
-  h5.innerHTML = title;
-  dlg.appendChild(h5);
+  if (title != undefined) {
+    const h5 = document.createElement('h5');
+    h5.innerHTML = title;
+    dlg.appendChild(h5);
+  }
   dlg.appendChild(art);
-  cont(art);
+  cont(art, dlg);
   return dlg;
 }
 
@@ -63,6 +67,22 @@ function make_img(icont, bcont, title) {
   button.appendChild(i);
 
   return el;
+}
+
+function enlarge_image(id) {
+  const dlg = make_dialog(undefined, (body, dlg) => {
+    body.appendChild(make_img(i => {
+      i.src = `/uploads/${id}`;
+      i.addEventListener('click', () => dlg.close());
+      i.classList = "responsive max";
+    }, b => {
+      b.addEventListener('click', () => dlg.close());
+    }))
+  });
+  dlg.classList = "large";
+  document.body.appendChild(E('div', {classList: 'overlay blur'}));
+  document.body.appendChild(dlg);
+  dlg.showModal();
 }
 
 function load_relation(id, table) {
