@@ -197,6 +197,26 @@ function make_with_thing(route, or) {
   }
 }
 
+// data = [[timestamp, yval, ...] ...]
+function dated_to_xys(data, fn, arg) {
+  const lst = data.sort((a, b) => a[0] < b[0]).map(it => {
+    it.date = new Date(it[0] * 1000)
+    return it;
+  });
+  const days = lst.reduce((l, v) => {
+    const t = date_to_day(v.date);
+    if (l[t] == undefined)
+      l[t] = [];
+    l[t].push(v);
+    return l;
+  }, {});
+  const xs = Object.keys(days).map(x => parseInt(x)).sort((a, b) => a > b);
+  // const ys = xs.map(v => days[v].reduce(rfn, base || 0));
+  const ys = xs.map(v => days[v][fn](...arg));
+
+  return [xs, ys, days]
+}
+
 const with_coffee_data = make_with_thing('/api/coffees', {name: "unknown"});
 const with_method_data = make_with_thing('/api/methods', {name: "unknown"});
 
@@ -204,10 +224,11 @@ function do_render(it) {
   render_lst.push((coffee_data, method_data) => {
     let el = document.getElementById(`chrt-${it}`);
     const chart = echarts.init(el, 'beer');
+    /* we get adequate data via el->x-data */
+    const data = JSON.parse(el.getAttribute('x-data'));
+
     switch (it) {
     case 'coffee-rating-distribution': {
-      /* we get data on coffees via el->x-data */
-      const data = JSON.parse(el.getAttribute('x-data'));
       const xs = iota(11);
       const ys = new Array(11).fill(0)
       Object.keys(data).forEach(k => {
@@ -230,8 +251,6 @@ function do_render(it) {
       chart.setOption(opt);
     } break;
     case 'coffee-style-ratios': {
-      /* we get data on coffees via el->x-data */
-      const data = JSON.parse(el.getAttribute('x-data'));
       const opt = {
         series: [{
           type: 'pie',
@@ -246,60 +265,63 @@ function do_render(it) {
       chart.setOption(opt);
     } break;
     case 'bean-history': {
-      fetch('/api/brews').then(d => d.json()).then((d) => {
-        const lst = d.sort((a, b) => a.timestamp < b.timestamp).map(it => {
-          it.date = new Date(it.timestamp * 1000)
-          return it;
-        });
-        const days = lst.reduce((l, v) => {
-          const t = date_to_day(v.date);
-          if (l[t] == undefined)
-            l[t] = [];
-          l[t].push(v);
-          return l;
-        }, {});
-        const xs = Object.keys(days).map(x => parseInt(x)).sort((a, b) => a > b);
-        const ys = xs.map(v => days[v].reduce((a, b) => a+b.dose, 0));
-        const opt = {
-          xAxis: {
-            data: xs,
-            axisLabel: {
-              formatter: (v) => {
-                return new Date(parseInt(v)).toLocaleDateString()
-              }
+      // ob = [[timestamp, dose, name], ...]
+      const [xs, ys, days] = dated_to_xys(data, 'reduce', [(a, b) => a+b[1], 0])
+      const opt = {
+        xAxis: {
+          data: xs,
+          axisLabel: {
+            formatter: (v) => {
+              return new Date(parseInt(v)).toLocaleDateString()
             }
+          }
+        },
+        yAxis: {},
+        series: [{
+          type: 'line',
+          data: ys,
+        }],
+        tooltip: {
+          renderMode: "html",
+          trigger: "axis",
+          formatter: (param) => {
+            const d = days[param[0].axisValue];
+            const el = E('div', {classList: "padding no-border"});
+            const ul = E('ul');
+            el.appendChild(ul);
+            d.sort((a, b) => a[0] > b[0]).forEach(it => {
+              ul.appendChild(E('li', {innerHTML: `${coffee_data(it[2]).name} (${it[1]}g)`}));
+            })
+            return el;
           },
-          yAxis: {},
-          series: [{
-            type: 'line',
-            data: ys,
-          }],
-          tooltip: {
-            renderMode: "html",
-            backgroundColor: "var(--background)",
-            border: "none",
-            borderWidth: 0,
-            padding: 0,
-            margin: 0,
-            boxShadow: "none",
-            trigger: "axis",
-            axisPointer: {
-              type: "shadow",
-            },
-            formatter: (param) => {
-              const d = days[param[0].axisValue];
-              const el = E('div', {classList: "padding no-border"});
-              const ul = E('ul');
-              el.appendChild(ul);
-              d.sort((a, b) => a.timestamp > b.timestamp).forEach(it => {
-                ul.appendChild(E('li', {innerHTML: `${coffee_data(it.coffee).name} (${it.dose}g)`}));
-              })
-              return el;
-            },
-          },
-        };
-        chart.setOption(opt);
-      });
+        },
+      };
+      chart.setOption(opt);
+    } break;
+    case 'rating-history': {
+      const [xs, ysp, days] = dated_to_xys(data, 'valueOf', [])
+      console.log(ysp)
+      const ys = ysp.map(y => y.reduce((a, b) => a+b[1], 0)/y.length);
+      console.log(ys)
+      const opt = {
+        xAxis: {
+          data: xs,
+          axisLabel: {
+            formatter: (v) => {
+              return new Date(parseInt(v)).toLocaleDateString()
+            }
+          }
+        },
+        yAxis: [{
+          min: 0,
+          max: 10
+        }],
+        series: [{
+          type: 'line',
+          data: ys,
+        }],
+      };
+      chart.setOption(opt);
     } break;
     default:
       console.error(`unknown do_render query: ${it}`);

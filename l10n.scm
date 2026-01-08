@@ -40,6 +40,7 @@
  render.main.best                   => "najlepsze kawki dotychczas"
  render.main.worst                  => "najgorsze kawki dotychczas"
  render.main.bean-history           => "historia pożegnanych ziaren"
+ render.main.rating-history         => "historia ocen"
 
  render.coffee.style-ratios         => "sposoby zaparzania"
  render.coffee.rating-distribution  => "rozkład ocen"

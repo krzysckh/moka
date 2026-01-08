@@ -524,7 +524,12 @@ ORDER BY cast(timestamp as int) desc"
                                   (h3 ,(l10n 'render.main.worst))
                                   ((nav (class . "row scroll"))
                                    ,@(map render-brew (db-get-worst-brews))))
-                                 ,(article-graph 'bean-history 'render.main.bean-history)
+                                 ,(article-graph
+                                   'bean-history 'render.main.bean-history
+                                   (json/encode (list->vector (db-get 'brews '(timestamp dose coffee)))))
+                                 ,(article-graph
+                                   'rating-history 'render.main.rating-history
+                                   (json/encode (list->vector (db-get 'brews '(timestamp rating)))))
                                  )))))
 
 (define-values (route-/roasteries route-/edit/roasteries)
