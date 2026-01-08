@@ -710,7 +710,7 @@ ORDER BY cast(timestamp as int) desc"
                headers => '((Content-type . "text/html"))
                content => (make-page
                            `(((article (class . "no-padding top-round border max"))
-                              ((img (class . "responsive medium top-round") (loading . "lazy") (src . ,(str "/uploads/" (get it 'image 0)))))
+                              ((img (class . "max center top-round") (loading . "lazy") (src . ,(str "/uploads/" (get it 'image 0)))))
                               ((nav (class . "padding"))
                                (table
                                 (tbody
