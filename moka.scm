@@ -315,6 +315,10 @@
       "false"
       (str it)))
 
+(define (days-since t)
+  (lets ((∆t (- (time) t)))
+    (floor (/ ∆t day))))
+
 ;; TODO: implement some sort of nice destructuring bind with . it
 (define (make-input-item vs default)
   (lets ((t rest vs)
@@ -503,34 +507,42 @@ ORDER BY cast(timestamp as int) desc"
           (style . "width: 100%; height: 100%;")
           (id . ,(str "chrt-" id))))))
 
-(define route-/ (λ (req)
-                  (r/response
-                   code => 200
-                   headers => '((Content-type . "text/html"))
-                   content => (make-page
-                               `(((article (class . "border"))
-                                  (h3 ,(l10n 'render.main.bean-sum))
-                                  (h6 ,(str (car* (car* (s3/execute (db) "SELECT CAST(SUM(dose) AS integer) FROM brews" #n))) "g"))
-                                  (p ,(l10n 'render.main.congrats)))
-                                 ((article (class . "border"))
-                                  (h3 ,(l10n 'render.main.last-week))
-                                  ((nav (class . "row scroll"))
-                                   ,@(map render-brew (db-get-latest-brews))))
-                                 ((article (class . "border"))
-                                  (h3 ,(l10n 'render.main.best))
-                                  ((nav (class . "row scroll"))
-                                   ,@(map render-brew (db-get-best-brews))))
-                                 ((article (class . "border"))
-                                  (h3 ,(l10n 'render.main.worst))
-                                  ((nav (class . "row scroll"))
-                                   ,@(map render-brew (db-get-worst-brews))))
-                                 ,(article-graph
-                                   'bean-history 'render.main.bean-history
-                                   (json/encode (list->vector (db-get 'brews '(timestamp dose coffee)))))
-                                 ,(article-graph
-                                   'rating-history 'render.main.rating-history
-                                   (json/encode (list->vector (db-get 'brews '(timestamp rating)))))
-                                 )))))
+(define (route-/ req)
+  (r/response
+   code => 200
+   headers => '((Content-type . "text/html"))
+   content => (make-page
+               `(((article (class . "border"))
+                  ,@(lets ((t (maybe-string->number (car (db-get 'brews '(timestamp) 1))))
+                           (sum (car* (car* (s3/execute (db) "SELECT CAST(SUM(dose) AS integer) FROM brews" #n))))
+                           (days (days-since t)))
+                      `((h3 ,(l10n 'render.main.bean-sum))
+                        (h6 ,(str sum "g"))
+                        (p ,(format
+                             #f (l10n 'render.main.bean-start+average)
+                             (date-str t *tz-offset*)
+                             days
+                             (floor (/ sum days))))
+                        (p ,(l10n 'render.main.congrats)))))
+                 ((article (class . "border"))
+                  (h3 ,(l10n 'render.main.last-week))
+                  ((nav (class . "row scroll"))
+                   ,@(map render-brew (db-get-latest-brews))))
+                 ((article (class . "border"))
+                  (h3 ,(l10n 'render.main.best))
+                  ((nav (class . "row scroll"))
+                   ,@(map render-brew (db-get-best-brews))))
+                 ((article (class . "border"))
+                  (h3 ,(l10n 'render.main.worst))
+                  ((nav (class . "row scroll"))
+                   ,@(map render-brew (db-get-worst-brews))))
+                 ,(article-graph
+                   'bean-history 'render.main.bean-history
+                   (json/encode (list->vector (db-get 'brews '(timestamp dose coffee)))))
+                 ,(article-graph
+                   'rating-history 'render.main.rating-history
+                   (json/encode (list->vector (db-get 'brews '(timestamp rating)))))
+                 ))))
 
 (define-values (route-/roasteries route-/edit/roasteries)
   (make-page-routes (l10n 'render.add.roastery)
