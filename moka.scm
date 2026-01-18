@@ -470,10 +470,10 @@ ORDER BY cast(timestamp as int) desc"
    (list (str (- (time) week)))))
 
 (define (db-get-best-brews)
-  (db-get-brews "WHERE rating IS NOT NULL AND rating <> '' ORDER BY cast(brews.rating as int) desc LIMIT 10" #n))
+  (db-get-brews "WHERE rating IS NOT NULL AND rating <> '' ORDER BY cast(brews.rating as int) desc, timestamp desc LIMIT 10" #n))
 
 (define (db-get-worst-brews)
-  (db-get-brews "WHERE rating IS NOT NULL AND rating <> '' ORDER BY cast(brews.rating as int) asc LIMIT 10" #n))
+  (db-get-brews "WHERE rating IS NOT NULL AND rating <> '' ORDER BY cast(brews.rating as int) asc, timestamp desc LIMIT 10" #n))
 
 (define (maybe-string->number s)
   (cond
