@@ -34,7 +34,8 @@
  render.brew.w/method               => "metodą: "
  render.brew.w/gear                 => "narzędziem: "
 
- render.main.bean-sum               => "kawka wypita (ziarna, łącznie)"
+ render.main.bean-sum               => "kawka wypita (ziarna, w gramach)"
+ render.main.bean-sum.total         => "łącznie"
  render.main.bean-start+average     => "od pierwszej kawki którą pamiętam (~a) minęło ~a dni. średnio ~ag na dzień."
  render.main.congrats               => "no, gratulacje. oby tak dalej. lecz się."
  render.main.last-week              => "twój ostatni tydzień"

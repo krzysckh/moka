@@ -517,7 +517,27 @@ ORDER BY cast(timestamp as int) desc"
                            (sum (car* (car* (s3/execute (db) "SELECT CAST(SUM(dose) AS integer) FROM brews" #n))))
                            (days (days-since t)))
                       `((h3 ,(l10n 'render.main.bean-sum))
-                        (h6 ,(str sum "g"))
+                        (details        ; TODO: maybe move that somewhere else
+                         (summary
+                          ((article (class . "round primary no-elevate margin"))
+                           (nav
+                            ((div (class . "max"))
+                             ,(str (l10n 'render.main.bean-sum.total) " " sum "g"))
+                            (i "expand_more"))))
+                         ((article (class . "round border margin"))
+                          (table
+                           (thead
+                            (tr
+                             (th "metoda")
+                             (th "suma")))
+                           (tbody
+                            ,@(map
+                               (λ (l) `(tr (td (b ,(car l))) (td ,(cadr l))))
+                               (db-get-where
+                                'brews
+                                '("methods.name" "SUM(CAST(dose as int)) as sum")
+                                "left join methods on brews.method=methods.id group by method order by sum desc"
+                                #n))))))
                         (p ,(format
                              #f (l10n 'render.main.bean-start+average)
                              (date-str t *tz-offset*)
