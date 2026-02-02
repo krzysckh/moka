@@ -479,7 +479,9 @@ ORDER BY cast(timestamp as int) desc"
   (cond
    ((equal? s "") 0)
    ((string? s) (string->number s))
-   (else s)))
+   ((null? s) 0)
+   (else
+    (error "cannot maybe-string->number " s ))))
 
 (define (maybe-render-key ff key f)
   (if-lets ((g (get ff key #f)))
@@ -513,8 +515,8 @@ ORDER BY cast(timestamp as int) desc"
    headers => '((Content-type . "text/html"))
    content => (make-page
                `(((article (class . "border"))
-                  ,@(lets ((t (maybe-string->number (car (db-get 'brews '(timestamp) 1))))
-                           (sum (car* (car* (s3/execute (db) "SELECT CAST(SUM(dose) AS integer) FROM brews" #n))))
+                  ,@(lets ((t (maybe-string->number (car* (db-get 'brews '(timestamp) 1))))
+                           (sum (or (car* (car* (s3/execute (db) "SELECT CAST(SUM(dose) AS integer) FROM brews" #n))) 0))
                            (days (days-since t)))
                       `((h3 ,(l10n 'render.main.bean-sum))
                         (details        ; TODO: maybe move that somewhere else
