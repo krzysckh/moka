@@ -479,6 +479,7 @@ ORDER BY cast(timestamp as int) desc"
   (cond
    ((equal? s "") 0)
    ((string? s) (string->number s))
+   ((number? s) s)
    ((null? s) 0)
    (else
     (error "cannot maybe-string->number " s ))))
