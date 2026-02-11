@@ -232,6 +232,7 @@
   gear         => (relation gear)
   image        => (relation uploads)
   local_p      => bool ; made at home?
+  private_p    => bool ; should be hidden in export
   grind_level  => int
   rating       => int
   dose         => int  ; coffee dose (grams)
@@ -368,12 +369,15 @@
                    ,@(if (not (null? required?)) '((required . "true")) '())))
            (label ,label)))
         ((bool)
-         `((label (class . "checkbox label"))
-           ((input (type . "hidden") (value . "0") (name . ,id)))
-           ((input (name . ,id) (type . "checkbox")
-                   ;;  TODO: default
-                   ,@(if (not (null? required?)) '((checked . "true")) '())))
-           (span ,label)))
+         `((div (class . "row"))
+           ((label (class . "checkbox label"))
+            ((input (type . "hidden") (value . "0") (name . ,id)))
+            ((input (name . ,id) (type . "checkbox")
+                    ;;  TODO: default
+                    ,@(if (not (null? required?))
+                          '((checked . "true"))
+                          '())))
+            (span ,label))))
         (else
          (error "unknown type: " t))))))
 
@@ -444,36 +448,37 @@
                brews.yield
                brews.notes
                brews.local_p
-               brews.timestamp
                brews.id
                grinders.name
                coffees.name
                methods.name
                gear.name
+               uploads.location
                ))
          (ks* (map (λ (k) (string->symbol ((string->regex "s/^brews\\.//") (str k)))) ks)))
     (map (λ (l) (list->ff (zip cons ks* l)))
          (db-get-where
           'brews ks
           (str "
-LEFT JOIN coffees  ON coffee  = coffees.id
-LEFT JOIN grinders ON grinder = grinders.id
-LEFT JOIN methods  ON method  = methods.id
-LEFT JOIN gear     ON gear    = gear.id " where) vs))))
+LEFT JOIN coffees  ON coffee      = coffees.id
+LEFT JOIN grinders ON grinder     = grinders.id
+LEFT JOIN methods  ON method      = methods.id
+LEFT JOIN gear     ON gear        = gear.id
+LEFT JOIN uploads  ON brews.image = uploads.id " where) vs))))
 
 (define week (* 60 60 24 7))
 
 (define (db-get-latest-brews)
   (db-get-brews
-   "WHERE timestamp is not null and cast(timestamp as int) > ?
-ORDER BY cast(timestamp as int) desc"
+   "WHERE brews.timestamp is not null and cast(brews.timestamp as int) > ?
+ORDER BY cast(brews.timestamp as int) desc"
    (list (str (- (time) week)))))
 
 (define (db-get-best-brews)
-  (db-get-brews "WHERE rating IS NOT NULL AND rating <> '' ORDER BY cast(brews.rating as int) desc, timestamp desc LIMIT 10" #n))
+  (db-get-brews "WHERE rating IS NOT NULL AND rating <> '' ORDER BY cast(brews.rating as int) desc, brews.timestamp desc LIMIT 10" #n))
 
 (define (db-get-worst-brews)
-  (db-get-brews "WHERE rating IS NOT NULL AND rating <> '' ORDER BY cast(brews.rating as int) asc, timestamp desc LIMIT 10" #n))
+  (db-get-brews "WHERE rating IS NOT NULL AND rating <> '' ORDER BY cast(brews.rating as int) asc, brews.timestamp desc LIMIT 10" #n))
 
 (define (maybe-string->number s)
   (cond
@@ -647,6 +652,7 @@ ORDER BY cast(timestamp as int) desc"
                       ((relation methods)  "method"     ,(l10n 'global.naming.method))
                       ((relation gear)     "gear"       ,(l10n 'global.naming.gear))
                       (bool                "local_p"    ,(l10n 'global.naming.local?) #t)
+                      (bool                "private_p"  ,(l10n 'global.naming.private?))
                       ((number 0 100)      "grind_level",(l10n 'global.naming.grind-level))
                       ((number 0 10)       "rating"     ,(l10n 'global.naming.rating))
                       (image               "image"      ,(l10n 'global.naming.image))
@@ -789,6 +795,11 @@ ORDER BY cast(timestamp as int) desc"
                              ,@(map (λ (f) (f id)) (get *graphs* table #n))
                              )))))))))
 
+(define (create-export)
+  (values
+   (map ff->list (db-get-brews "where private_p is null or cast(private_p as integer) = 0" '()))
+   (car* (car* (db-get-where 'brews '("count(*)") "where private_p is not null and cast(private_p as integer) <> 0" '())))))
+
 (define (compress-image filename-from filename-to)
   ;; (system `("convert" ,filename-from "-resize" "640" "-quality" "90" ,filename-to)))
   (system `("convert" ,filename-from "-resize" "640" "-dither" "FloydSteinberg" "-remap" "netscape:" "-colors" "8" ,filename-to)))
@@ -859,6 +870,14 @@ ORDER BY cast(timestamp as int) desc"
    "/api/grinders"    => (make-api-responder 'grinders)
    "/api/gear"        => (make-api-responder 'gear)
    "/api/brews"       => (make-api-responder 'brews)
+   "/api/export"      => (λ (req)
+                           (lets ((vs nskip (create-export)))
+                             (r/response
+                              code    => 200
+                              headers => '((Content-type . "application/json"))
+                              content => (json/encode
+                                          `(("skipped" . ,nskip)
+                                            ("items"   . ,vs))))))
 
    "m/^\\/uploads\\/[0-9]+$/" => (λ (r)
                                    (let ((id (string->number (last ((string->regex "c/\\//") (get r 'path 'bug)) 0))))

@@ -17,6 +17,7 @@
  global.naming.dose                 => "doza (w gramach)"
  global.naming.yield                => "uzysk (w gramach)"
  global.naming.timestamp            => "data/godzina (unix timestamp)"
+ global.naming.private?             => "prywatne? (zawiera dane wrażliwe - niewidoczne w eksporcie)"
 
  menu.opinion                       => "opinie"
  menu.images                        => "obrazki"
