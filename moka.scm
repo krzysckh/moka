@@ -189,16 +189,18 @@
   )
 
 (define-table (roasteries make-roastery update-roastery)
-  name   => text
-  image  => (relation uploads)
-  url    => text
-  notes  => text
+  name      => text
+  image     => (relation uploads)
+  url       => text
+  notes     => text
+  last_used => datetime
   )
 
 (define-table (methods make-method update-method)
-  name  => text
-  image => (relation uploads)
-  notes => text
+  name      => text
+  image     => (relation uploads)
+  notes     => text
+  last_used => datetime
   )
 
 (define-table (coffees make-coffee update-coffee)
@@ -208,20 +210,23 @@
   image       => (relation uploads)
   url         => text
   notes       => text
+  last_used   => datetime
   )
 
 (define-table (grinders make-grinder update-grinder)
-  name  => text
-  image => (relation uploads)
-  url   => text
-  notes => text
+  name      => text
+  image     => (relation uploads)
+  url       => text
+  notes     => text
+  last_used => datetime
   )
 
 (define-table (gear make-gear update-gear)          ; espresso machines, moka pots et al
-  name  => text
-  url   => text
-  image => (relation uploads)
-  notes => text
+  name      => text
+  url       => text
+  image     => (relation uploads)
+  notes     => text
+  last_used => datetime
   )
 
 (define-table (brews make-brew update-brew)
@@ -663,14 +668,23 @@ ORDER BY cast(brews.timestamp as int) desc"
                     'brews
                     '(timestamp coffee grinder method gear local_p grind_level rating image dose yield notes)))
 
-(define (make-api-responder table)
+(define (make-api-responder table . limit)
   (let ((items (keys (get-schema table))))
     (λ (req)
       (r/response
        code    => 200
        headers => '((Content-type . "application/json"))
-       content => (json/encode (list->vector (map (λ (l) (zip cons items l))
-                                                  (db-get table items))))))))
+       content => (json/encode (list->vector (map
+                                              (λ (l) (zip cons items l))
+                                              (let ((timestamped? (or (and (has? items 'timestamp) 'timestamp)
+                                                                      (and (has? items 'last_used) 'last_used)
+                                                                      'id))
+                                                    (limited (if (null? limit) "" "limit ?")))
+                                                (db-get-where
+                                                 table items
+                                                 (format #f "order by ~a desc ~a" timestamped? limited)
+                                                 limit)
+                                                ))))))))
 
 (define (make-simple-adder constructor redir)
   (λ (req)
@@ -689,6 +703,25 @@ ORDER BY cast(brews.timestamp as int) desc"
        (r/response
         code => 405
         content => "Method not allowed")))))
+
+;;;- why tf are these curried
+(define complicated-brew-adder
+  (λ (it)
+    (λ (db)
+      ;; ... update last_used per relations
+      (let ((coffee  (get it 'coffee #f))
+            (grinder (get it 'grinder #f))
+            (method  (get it 'method #f))
+            (gear    (get it 'gear #f))
+            (dt      (str (time))))
+        (for-each
+         (λ (l)
+           (lets ((f x l))
+             ((f (ff 'id x 'last_used dt)) db)))
+         (zip cons
+              (list update-coffee update-grinder update-method update-gear)
+              (list coffee grinder method gear)))
+        ((make-brew it) db)))))
 
 (define (fold2* op acc l1 l2)
   (if (or (null? l1) (null? l2))
@@ -839,7 +872,7 @@ ORDER BY cast(brews.timestamp as int) desc"
    "/new/coffee"      => (make-simple-adder make-coffee   "/coffees")
    "/new/grinder"     => (make-simple-adder make-grinder  "/grinders")
    "/new/gear"        => (make-simple-adder make-gear     "/gear")
-   "/new/brew"        => (make-simple-adder make-brew     "/brews")
+   "/new/brew"        => (make-simple-adder complicated-brew-adder "/brews")
 
    "/update/roastery" => (make-simple-adder update-roastery "/roasteries")
    "/update/method"   => (make-simple-adder update-method   "/methods")
@@ -863,14 +896,15 @@ ORDER BY cast(brews.timestamp as int) desc"
                                     (s3/execute (db) "INSERT INTO uploads (location, timestamp) VALUES (?, current_timestamp)" (list filename))))
                                  (r/response code => 200))))
 
-   "/api/uploads"     => (make-api-responder 'uploads)
-   "/api/roasteries"  => (make-api-responder 'roasteries)
-   "/api/methods"     => (make-api-responder 'methods)
-   "/api/coffees"     => (make-api-responder 'coffees)
-   "/api/grinders"    => (make-api-responder 'grinders)
-   "/api/gear"        => (make-api-responder 'gear)
-   "/api/brews"       => (make-api-responder 'brews)
-   "/api/export"      => (λ (req)
+   "/api/uploads"      => (make-api-responder 'uploads)
+   "/api/last-uploads" => (make-api-responder 'uploads 20)
+   "/api/roasteries"   => (make-api-responder 'roasteries)
+   "/api/methods"      => (make-api-responder 'methods)
+   "/api/coffees"      => (make-api-responder 'coffees)
+   "/api/grinders"     => (make-api-responder 'grinders)
+   "/api/gear"         => (make-api-responder 'gear)
+   "/api/brews"        => (make-api-responder 'brews)
+   "/api/export"       => (λ (req)
                            (lets ((vs nskip (create-export)))
                              (r/response
                               code    => 200

@@ -90,7 +90,7 @@ function load_relation(id, table) {
   const refresh = () => {
     const dlg = make_dialog(`wybierz ${table}`, body => {
       fetch(`/api/${table}`).then(r => r.json()).then(its => {
-        for (let it of its.reverse()) {
+        for (let it of its) {
           const click = () => {
             target.value = it['id'];
             dlg.close();
@@ -115,7 +115,7 @@ function load_upload_id(id) {
   const it = document.getElementById(id);
   const refresh = () => {
     const dlg = make_dialog('wybierz obrazek', body => {
-      fetch('/api/uploads').then(r => r.json()).then(ups => {
+      fetch('/api/last-uploads').then(r => r.json()).then(ups => {
         const uploader = make_image_uploader(() => {
           dlg.close();
           refresh();
@@ -123,7 +123,7 @@ function load_upload_id(id) {
 
         body.appendChild(uploader);
 
-        for (let up of ups.reverse()) {
+        for (let up of ups) {
           const el = make_img(i => {
             i.src = '/' + up['location']
           }, b => {
